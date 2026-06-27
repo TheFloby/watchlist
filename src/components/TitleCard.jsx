@@ -160,7 +160,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
                 >
                   {Array.from({ length: Math.max(title.total_seasons || 1, title.current_season || 1) }, (_, i) => i + 1).map((n) => (
                     <option key={n} value={n}>
-                      Saison {n}{title.total_seasons ? ` / ${title.total_seasons}` : ''}
+                      Saison {n}
                     </option>
                   ))}
                 </select>
