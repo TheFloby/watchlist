@@ -20,11 +20,11 @@ function hasSeasons(title) {
   return HAS_SEASONS.has(title.type) || Boolean(title.total_seasons)
 }
 
-// Formate une date ISO (YYYY-MM-DD) en JJ/MM, pour l'affichage du badge "à venir".
+// Formate une date ISO (YYYY-MM-DD) en JJ/MM/AA, pour l'affichage du badge "à venir".
 function formatShortDate(isoDate) {
   if (!isoDate) return null
-  const [, month, day] = isoDate.split('-')
-  return `${day}/${month}`
+  const [year, month, day] = isoDate.split('-')
+  return `${day}/${month}/${year.slice(-2)}`
 }
 
 export default function TitleCard({ title, currentUserEmail, onChanged }) {

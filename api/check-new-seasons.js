@@ -174,6 +174,12 @@ export default async function handler(req, res) {
         fields.new_season_available = true
       }
       resultStatus = `nouvelle saison sortie ! ${title.total_seasons} → ${airedSeasonsCount}${title.status === 'vu' ? ' (badge activé)' : ' (mise à jour silencieuse)'}`
+    } else if (airedSeasonsCount < title.total_seasons) {
+      // total_seasons avait été enregistré trop haut (ex: une saison était comptée alors
+      // qu'elle n'était qu'annoncée, avant ce correctif). On corrige silencieusement,
+      // sans déclencher de badge — ce n'est pas une nouvelle saison, juste une correction.
+      fields.total_seasons = airedSeasonsCount
+      resultStatus = `total_seasons corrigé (était trop élevé) : ${title.total_seasons} → ${airedSeasonsCount}`
     }
 
     if (Object.keys(fields).length > 0) {
