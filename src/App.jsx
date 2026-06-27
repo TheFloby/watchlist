@@ -66,6 +66,14 @@ export default function App() {
   const pseudo = emailToPseudo(session.user.email)
   const avatar = avatarForEmail(session.user.email)
 
+  // Dans l'onglet Terminé : 0 = nouvelle saison sortie (le plus prioritaire),
+  // 1 = saison annoncée mais pas encore sortie, 2 = rien de particulier.
+  function seasonPriority(t) {
+    if (t.new_season_available) return 0
+    if (t.upcoming_season_date) return 1
+    return 2
+  }
+
   const visibleTitles = titles
     .filter(
       (t) =>
@@ -74,12 +82,8 @@ export default function App() {
         (searchQuery.trim() === '' || t.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
     )
     .sort((a, b) => {
-      // Dans l'onglet Terminé, les séries avec une nouvelle saison disponible
-      // remontent toujours en haut, pour qu'on les voie sans avoir à chercher le badge.
       if (activeTab === 'vu') {
-        const aHasNew = a.new_season_available ? 1 : 0
-        const bHasNew = b.new_season_available ? 1 : 0
-        if (aHasNew !== bHasNew) return bHasNew - aHasNew
+        return seasonPriority(a) - seasonPriority(b)
       }
       return 0
     })
