@@ -11,6 +11,15 @@ const TYPE_LABELS = {
 
 const HAS_SEASONS = new Set(['serie', 'serie_animee'])
 
+// Un titre a des saisons à suivre si c'est une série/série animée par défaut,
+// OU si on a déjà un total_seasons enregistré pour lui (cas d'un manga dont
+// l'adaptation animée a été trouvée sur TMDB — ex: Ao Ashi).
+// Les films restent exclus dans tous les cas, par définition ils n'ont pas de saisons.
+function hasSeasons(title) {
+  if (title.type === 'film') return false
+  return HAS_SEASONS.has(title.type) || Boolean(title.total_seasons)
+}
+
 export default function TitleCard({ title, currentUserEmail, onChanged }) {
   const [busy, setBusy] = useState(false)
 
@@ -114,7 +123,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
               disabled={busy}
               onClick={() => confirmAndUpdate(
                 `Commencer « ${title.name} » ?`,
-                { status: 'en_cours', current_season: HAS_SEASONS.has(title.type) ? 1 : null }
+                { status: 'en_cours', current_season: hasSeasons(title) ? 1 : null }
               )}
             >
               On commence
@@ -124,7 +133,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
           {/* --- EN COURS : menu saison (si applicable) + terminé/abandonner --- */}
           {title.status === 'en_cours' && (
             <>
-              {HAS_SEASONS.has(title.type) && (
+              {hasSeasons(title) && (
                 <select
                   className="status-select"
                   value={title.current_season || 1}
@@ -179,7 +188,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
               disabled={busy}
               onClick={() => confirmAndUpdate(
                 `Revoir « ${title.name} » depuis le début ?`,
-                { status: 'en_cours', current_season: HAS_SEASONS.has(title.type) ? 1 : null }
+                { status: 'en_cours', current_season: hasSeasons(title) ? 1 : null }
               )}
             >
               Revoir
