@@ -24,6 +24,12 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
     onChanged()
   }
 
+  // Demande confirmation avant chaque action de changement de statut.
+  function confirmAndUpdate(message, fields) {
+    if (!confirm(message)) return
+    update(fields)
+  }
+
   async function handleDelete() {
     if (!confirm(`Retirer « ${title.name} » de la liste ?`)) return
     setBusy(true)
@@ -71,10 +77,18 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
               <p className="title-card-waiting">En attente de validation</p>
             ) : (
               <>
-                <button className="btn btn-validate" disabled={busy} onClick={() => update({ status: 'a_voir' })}>
+                <button
+                  className="btn btn-validate"
+                  disabled={busy}
+                  onClick={() => confirmAndUpdate(`Valider la proposition « ${title.name} » ?`, { status: 'a_voir' })}
+                >
                   Valider
                 </button>
-                <button className="btn btn-refuse" disabled={busy} onClick={() => update({ status: 'refusee' })}>
+                <button
+                  className="btn btn-refuse"
+                  disabled={busy}
+                  onClick={() => confirmAndUpdate(`Refuser la proposition « ${title.name} » ?`, { status: 'refusee' })}
+                >
                   Refuser
                 </button>
               </>
@@ -86,7 +100,10 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
             <button
               className="btn btn-action"
               disabled={busy}
-              onClick={() => update({ status: 'en_cours', current_season: HAS_SEASONS.has(title.type) ? 1 : null })}
+              onClick={() => confirmAndUpdate(
+                `Commencer « ${title.name} » ?`,
+                { status: 'en_cours', current_season: HAS_SEASONS.has(title.type) ? 1 : null }
+              )}
             >
               On commence
             </button>
@@ -109,19 +126,45 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
                   ))}
                 </select>
               )}
-              <button className="btn btn-action" disabled={busy} onClick={() => update({ status: 'vu' })}>
+              <button
+                className="btn btn-action"
+                disabled={busy}
+                onClick={() => confirmAndUpdate(`Marquer « ${title.name} » comme terminé ?`, { status: 'vu' })}
+              >
                 Terminé
               </button>
-              <button className="btn btn-abandon" disabled={busy} onClick={() => update({ status: 'jamais_fini' })}>
+              <button
+                className="btn btn-abandon"
+                disabled={busy}
+                onClick={() => confirmAndUpdate(`Abandonner « ${title.name} » ?`, { status: 'jamais_fini' })}
+              >
                 Abandonner
               </button>
             </>
           )}
 
-          {/* --- JAMAIS FINI : reprendre --- */}
+          {/* --- JAMAIS FINI : reprendre, à la saison où on s'était arrêté --- */}
           {title.status === 'jamais_fini' && (
-            <button className="btn btn-action" disabled={busy} onClick={() => update({ status: 'en_cours' })}>
+            <button
+              className="btn btn-action"
+              disabled={busy}
+              onClick={() => confirmAndUpdate(`Reprendre « ${title.name} » ?`, { status: 'en_cours' })}
+            >
               Reprendre
+            </button>
+          )}
+
+          {/* --- DÉJÀ VU : revoir depuis le début --- */}
+          {title.status === 'vu' && (
+            <button
+              className="btn btn-action"
+              disabled={busy}
+              onClick={() => confirmAndUpdate(
+                `Revoir « ${title.name} » depuis le début ?`,
+                { status: 'en_cours', current_season: HAS_SEASONS.has(title.type) ? 1 : null }
+              )}
+            >
+              Revoir
             </button>
           )}
 

@@ -2,44 +2,18 @@
 
 Site perso pour Thomas et Flo : propositions, validations croisées, suivi des saisons, et tout l'historique (vu / en cours / abandonné).
 
-## Nouveauté de cette version
+## Nouveautés de cette mise à jour
 
-Cette mise à jour change pas mal de choses par rapport à la première version : nouveau workflow (Propositions → Refusées / À voir → En cours → Déjà vu / Jamais fini), suivi des saisons, sidebar avec connexion par avatar, nouvelle direction artistique, mobile + installation en app.
+- Bouton **Revoir** sur les titres déjà vus (repart en cours, saison 1)
+- Bouton **Ajouter directement** (visible seulement pour Flo) : ajoute un titre sans passer par Propositions, avec choix du statut final — utile pour rentrer tout l'historique sans avoir à faire des allers-retours de validation
+- Logos agrandis dans la sidebar et sur l'écran de connexion
+- Une popup de confirmation apparaît maintenant avant chaque changement de statut (Valider, Refuser, On commence, Terminé, Abandonner, Reprendre, Revoir)
+- Favicon dédié, recadré pour rester lisible même en tout petit dans l'onglet du navigateur
+- Correction d'un bug d'affichage sur iPhone : le menu passait sous la barre de statut (heure, batterie) en PWA installée — c'est corrigé
 
-**Si tu avais déjà la première version en ligne avec des données (ex: Game of Thrones)**, il faut migrer ta base — voir étape 1 ci-dessous avant de remplacer le code.
+Aucune migration de base de données n'est nécessaire pour cette mise à jour (juste du code, pas de nouvelle colonne).
 
-## 1. Mettre à jour la base de données (Supabase)
-
-### Si tu as déjà des titres enregistrés (cas probable)
-
-1. Dans Supabase → **SQL Editor** → **New query**.
-2. Copie-colle le contenu de `sql/migration.sql`, clique **Run**. Ça ajoute les nouvelles colonnes sans rien supprimer.
-3. Le titre que vous aviez déjà (Game of Thrones) sera toujours là, mais avec l'ancien statut "vu" — il apparaîtra donc directement dans l'onglet **Déjà vu**, ce qui correspond à ce qu'il était.
-
-### Si tu repars de zéro
-
-1. Dans Supabase → **SQL Editor** → **New query**.
-2. Copie-colle le contenu de `sql/setup.sql`, clique **Run**.
-
-## 2. Le logo et les avatars
-
-Déjà tout inclus dans `public/` — logo TFCU, avatars individuels de Thomas et Flo (découpés depuis votre logo), et icônes pour l'installation en app. Rien à faire.
-
-## 3. La recherche automatique (TMDB)
-
-La clé API est déjà intégrée dans `src/config.js`. Nouveauté : elle récupère maintenant aussi le nombre de saisons des séries automatiquement.
-
-## 4. Créer les comptes (si pas déjà fait)
-
-Toujours pas d'inscription publique. Si tu as déjà créé les comptes Thomas et Flo dans Supabase lors de la dernière mise à jour, **tu n'as rien à refaire**.
-
-Sinon : Supabase → **Authentication** → **Users** → **Add user** → **Create new user** :
-- Thomas : email `thomas@watchlist.local`, mot de passe de ton choix, coche **Auto Confirm User**
-- Flo : email `flo@watchlist.local`, mot de passe de ton choix, coche **Auto Confirm User**
-
-Sur le site, on ne tape plus de pseudo : on clique sur son avatar, puis on tape son mot de passe.
-
-## 5. Mettre à jour le code (GitHub)
+## 1. Mettre à jour le code (GitHub)
 
 Comme c'est une grosse mise à jour, le plus simple est de **remplacer tout le contenu de ton dossier local** par celui de ce zip (sauf si tu as fait des modifs perso entre-temps), puis :
 
@@ -52,7 +26,7 @@ git push
 
 Vercel redéploiera automatiquement en ~1 minute.
 
-## 6. Installer le site comme une app (PWA)
+## 2. Installer le site comme une app (PWA)
 
 Une fois le site déployé et ouvert sur ton téléphone :
 
@@ -62,7 +36,9 @@ Une fois le site déployé et ouvert sur ton téléphone :
 
 L'icône TFCU apparaît alors comme une vraie app, qui s'ouvre en plein écran.
 
-## 7. Comment ça fonctionne maintenant
+Si tu avais déjà installé l'app avant cette mise à jour, désinstalle-la et réinstalle-la pour récupérer la correction de la barre de statut.
+
+## 3. Comment ça fonctionne maintenant
 
 **Le workflow complet :**
 
@@ -81,10 +57,13 @@ Propositions ──valide──→ À voir ──"On commence"──→ En cours
 ```
 
 - **Proposer un titre** : bouton "+ Proposer un titre" dans la sidebar. Le titre part dans l'onglet **Propositions**.
+- **Ajouter directement** (Flo uniquement) : bouton "+ Ajouter directement" sous le précédent. Permet de choisir le statut final (À voir / En cours / Déjà vu) sans passer par une validation. Pratique pour rentrer tout votre historique de séries déjà vues sans avoir à les faire valider une par une.
 - **Valider/Refuser** : dans l'onglet Propositions, seule la personne qui n'a **pas** proposé le titre voit les boutons Valider/Refuser (pour éviter de valider sa propre proposition).
 - **Saisons** : pour les séries et séries animées, le nombre de saisons est récupéré automatiquement via TMDB. Une fois en cours, un menu déroulant permet d'indiquer où vous en êtes.
 - **Abandonner** : depuis En cours, si vous arrêtez une série en cours de route, elle part dans **Jamais fini** en gardant en mémoire la saison où vous étiez. Le bouton "Reprendre" la renvoie en cours, à la bonne saison.
+- **Revoir** : depuis Déjà vu, repart en cours à la saison 1 (pour un rewatch complet).
 - **Films et mangas** : pas de gestion de saisons, juste À voir → En cours → Terminé.
+- **Confirmation** : chaque bouton d'action affiche une popup "Es-tu sûr ?" avant d'appliquer le changement.
 
 ## Pour faire des modifications plus tard
 
@@ -98,7 +77,8 @@ series-tracker/
 │   ├── setup.sql          → création complète (base vide)
 │   └── migration.sql      → mise à jour d'une base existante
 ├── public/
-│   ├── logo.png           → logo TFCU (header, favicon)
+│   ├── logo.png           → logo TFCU complet (header, écran de connexion)
+│   ├── favicon.png        → version recadrée du logo, pour l'icône d'onglet
 │   ├── pwa-192.png, pwa-512.png → icônes d'installation app
 │   ├── manifest.json      → config PWA
 │   └── avatars/

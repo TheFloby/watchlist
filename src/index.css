@@ -38,6 +38,12 @@ html, body {
 
 body {
   min-height: 100vh;
+  /* Empêche le contenu de passer sous la barre de statut / encoche sur iOS
+     (nécessaire car index.html utilise viewport-fit=cover pour la PWA) */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 #root {

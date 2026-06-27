@@ -9,9 +9,17 @@ const TYPES = [
   { value: 'manga', label: 'Manga' },
 ]
 
+const STATUSES = [
+  { value: 'a_voir', label: 'À voir' },
+  { value: 'en_cours', label: 'En cours' },
+  { value: 'vu', label: 'Déjà vu' },
+]
+
 const HAS_SEASONS = new Set(['serie', 'serie_animee'])
 
-export default function AddTitleForm({ user, onAdded, onClose }) {
+// adminMode : true pour le bouton "Ajouter directement" (Flo) — saute la case
+// Propositions et permet de choisir directement le statut final.
+export default function AddTitleForm({ user, onAdded, onClose, adminMode = false }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
@@ -23,6 +31,8 @@ export default function AddTitleForm({ user, onAdded, onClose }) {
   const [type, setType] = useState('serie')
   const [totalSeasons, setTotalSeasons] = useState(null)
   const [manualMode, setManualMode] = useState(false)
+  const [directStatus, setDirectStatus] = useState('vu')
+  const [currentSeason, setCurrentSeason] = useState(1)
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -85,12 +95,24 @@ export default function AddTitleForm({ user, onAdded, onClose }) {
     setLoading(true)
     setError('')
 
+    const isDirectSeries = HAS_SEASONS.has(type)
+    const finalStatus = adminMode ? directStatus : 'proposition'
+
+    // En mode admin, si le statut choisi est "en_cours" ou "vu", on enregistre
+    // une saison cohérente (sinon le menu saison de la carte n'aurait rien à afficher).
+    let finalCurrentSeason = null
+    if (isDirectSeries) {
+      if (adminMode && finalStatus === 'en_cours') finalCurrentSeason = currentSeason
+      else if (adminMode && finalStatus === 'vu') finalCurrentSeason = totalSeasons || currentSeason
+    }
+
     const { error } = await supabase.from('titles').insert({
       name: finalName,
       image_url: imageUrl.trim() || null,
       type,
-      status: 'proposition',
-      total_seasons: HAS_SEASONS.has(type) ? totalSeasons : null,
+      status: finalStatus,
+      total_seasons: isDirectSeries ? totalSeasons : null,
+      current_season: finalCurrentSeason,
       added_by: user.id,
       added_by_email: user.email,
     })
@@ -111,11 +133,13 @@ export default function AddTitleForm({ user, onAdded, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Proposer un titre</h2>
+          <h2>{adminMode ? 'Ajouter directement' : 'Proposer un titre'}</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Fermer">✕</button>
         </div>
         <p className="modal-subtitle">
-          Ça partira dans l'onglet Propositions, en attente de validation.
+          {adminMode
+            ? 'Ajout direct dans la liste, sans passer par les Propositions.'
+            : "Ça partira dans l'onglet Propositions, en attente de validation."}
         </p>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -236,10 +260,33 @@ export default function AddTitleForm({ user, onAdded, onClose }) {
             </select>
           </label>
 
+          {adminMode && (
+            <label className="field">
+              <span>Statut</span>
+              <select value={directStatus} onChange={(e) => setDirectStatus(e.target.value)}>
+                {STATUSES.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {adminMode && directStatus === 'en_cours' && HAS_SEASONS.has(type) && (
+            <label className="field">
+              <span>Saison actuelle</span>
+              <input
+                type="number"
+                min="1"
+                value={currentSeason}
+                onChange={(e) => setCurrentSeason(parseInt(e.target.value) || 1)}
+              />
+            </label>
+          )}
+
           {error && <p className="auth-message auth-message--error">{error}</p>}
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Envoi…' : 'Proposer'}
+            {loading ? 'Envoi…' : adminMode ? 'Ajouter' : 'Proposer'}
           </button>
         </form>
       </div>

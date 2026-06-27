@@ -22,6 +22,7 @@ export default function App() {
   const [titles, setTitles] = useState([])
   const [loadingTitles, setLoadingTitles] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [addFormAdminMode, setAddFormAdminMode] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -95,10 +96,8 @@ export default function App() {
 
         <div className="sidebar-brand">
           <img src="/logo.png" alt="TFCU" />
-          <div>
-            <div className="sidebar-brand-title">Watchlist</div>
-            <div className="sidebar-brand-sub">TFCU</div>
-          </div>
+          <div className="sidebar-brand-title">Watchlist</div>
+          <div className="sidebar-brand-sub">TFCU</div>
         </div>
 
         <nav className="sidebar-nav">
@@ -118,9 +117,18 @@ export default function App() {
           })}
         </nav>
 
-        <button className="sidebar-add" onClick={() => { setShowAddForm(true); setSidebarOpen(false) }}>
+        <button className="sidebar-add" onClick={() => { setAddFormAdminMode(false); setShowAddForm(true); setSidebarOpen(false) }}>
           + Proposer un titre
         </button>
+
+        {pseudo === 'Flo' && (
+          <button
+            className="sidebar-add sidebar-add--admin"
+            onClick={() => { setAddFormAdminMode(true); setShowAddForm(true); setSidebarOpen(false) }}
+          >
+            + Ajouter directement
+          </button>
+        )}
 
         <div className="sidebar-user">
           {avatar && <img src={avatar} alt="" className="sidebar-user-avatar" />}
@@ -177,6 +185,7 @@ export default function App() {
       {showAddForm && (
         <AddTitleForm
           user={session.user}
+          adminMode={addFormAdminMode}
           onAdded={() => {
             setShowAddForm(false)
             fetchTitles()
