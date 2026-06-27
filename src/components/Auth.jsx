@@ -1,40 +1,41 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 
+// Supabase a besoin d'un email pour fonctionner, mais on ne veut montrer
+// qu'un pseudo à l'utilisateur. On transforme donc le pseudo en
+// "faux email" en interne, invisible pour la personne qui utilise le site.
+function pseudoToEmail(pseudo) {
+  const clean = pseudo.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '')
+  return `${clean}@watchlist.local`
+}
+
 export default function Auth() {
-  const [mode, setMode] = useState('signin') // 'signin' | 'signup'
-  const [email, setEmail] = useState('')
+  const [pseudo, setPseudo] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [info, setInfo] = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    setInfo('')
-    setLoading(true)
 
-    if (mode === 'signin') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(traduireErreur(error.message))
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) {
-        setError(traduireErreur(error.message))
-      } else {
-        setInfo('Compte créé. Tu peux te connecter.')
-        setMode('signin')
-      }
+    const cleanPseudo = pseudo.trim()
+    if (!cleanPseudo) {
+      setError('Entre ton pseudo.')
+      return
     }
+
+    setLoading(true)
+    const email = pseudoToEmail(cleanPseudo)
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) setError(traduireErreur(error.message))
+
     setLoading(false)
   }
 
   function traduireErreur(msg) {
-    if (msg.includes('Invalid login credentials')) return 'Email ou mot de passe incorrect.'
-    if (msg.includes('User already registered')) return 'Un compte existe déjà avec cet email.'
-    if (msg.includes('Password should be at least')) return 'Le mot de passe doit faire au moins 6 caractères.'
-    if (msg.includes('Unable to validate email address')) return 'Adresse email invalide.'
+    if (msg.includes('Invalid login credentials')) return 'Pseudo ou mot de passe incorrect.'
     return msg
   }
 
@@ -50,20 +51,19 @@ export default function Auth() {
           />
           <h1>Watchlist</h1>
         </div>
-        <p className="auth-subtitle">
-          {mode === 'signin' ? 'Content de te revoir.' : 'Crée ton compte pour commencer.'}
-        </p>
+        <p className="auth-subtitle">Content de te revoir.</p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <label className="field">
-            <span>Email</span>
+            <span>Pseudo</span>
             <input
-              type="email"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="toi@exemple.com"
-              autoComplete="email"
+              autoFocus
+              value={pseudo}
+              onChange={(e) => setPseudo(e.target.value)}
+              placeholder="flo"
+              autoComplete="username"
             />
           </label>
 
@@ -72,32 +72,19 @@ export default function Auth() {
             <input
               type="password"
               required
-              minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+              autoComplete="current-password"
             />
           </label>
 
           {error && <p className="auth-message auth-message--error">{error}</p>}
-          {info && <p className="auth-message auth-message--info">{info}</p>}
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Un instant…' : mode === 'signin' ? 'Se connecter' : "Créer mon compte"}
+            {loading ? 'Un instant…' : 'Se connecter'}
           </button>
         </form>
-
-        <button
-          className="auth-switch"
-          onClick={() => {
-            setMode(mode === 'signin' ? 'signup' : 'signin')
-            setError('')
-            setInfo('')
-          }}
-        >
-          {mode === 'signin' ? "Pas encore de compte ? S'inscrire" : 'Déjà un compte ? Se connecter'}
-        </button>
       </div>
     </div>
   )
