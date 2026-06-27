@@ -464,6 +464,37 @@
   color: var(--cream);
 }
 
+.content-header-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  padding: 8px 12px;
+  color: var(--cream);
+  font-size: 13px;
+  width: 200px;
+  transition: border-color 0.15s ease;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--cream-faint);
+}
+
+.search-input::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+
 /* ============================================
    TITLE GRID & CARDS
    ============================================ */
@@ -868,6 +899,16 @@
 
   .content-header h1 {
     font-size: 22px;
+  }
+
+  .content-header-filters {
+    width: 100%;
+  }
+
+  .search-input {
+    flex: 1;
+    min-width: 0;
+    width: auto;
   }
 
   .title-grid {

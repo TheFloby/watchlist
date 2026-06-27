@@ -24,6 +24,7 @@ export default function App() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [addFormAdminMode, setAddFormAdminMode] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
@@ -65,9 +66,23 @@ export default function App() {
   const pseudo = emailToPseudo(session.user.email)
   const avatar = avatarForEmail(session.user.email)
 
-  const visibleTitles = titles.filter(
-    (t) => t.status === activeTab && (typeFilter === 'all' || t.type === typeFilter)
-  )
+  const visibleTitles = titles
+    .filter(
+      (t) =>
+        t.status === activeTab &&
+        (typeFilter === 'all' || t.type === typeFilter) &&
+        (searchQuery.trim() === '' || t.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+    )
+    .sort((a, b) => {
+      // Dans l'onglet Terminé, les séries avec une nouvelle saison disponible
+      // remontent toujours en haut, pour qu'on les voie sans avoir à chercher le badge.
+      if (activeTab === 'vu') {
+        const aHasNew = a.new_season_available ? 1 : 0
+        const bHasNew = b.new_season_available ? 1 : 0
+        if (aHasNew !== bHasNew) return bHasNew - aHasNew
+      }
+      return 0
+    })
 
   const currentTab = TABS.find((t) => t.key === activeTab)
 
@@ -146,18 +161,28 @@ export default function App() {
       <main className="main-content">
         <header className="content-header">
           <h1>{currentTab.label}</h1>
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="status-select"
-            aria-label="Filtrer par type"
-          >
-            <option value="all">Tous les types</option>
-            <option value="serie">Séries</option>
-            <option value="serie_animee">Séries animées</option>
-            <option value="film">Films</option>
-            <option value="manga">Mangas</option>
-          </select>
+          <div className="content-header-filters">
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher un titre…"
+              className="search-input"
+              aria-label="Rechercher un titre"
+            />
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="status-select"
+              aria-label="Filtrer par type"
+            >
+              <option value="all">Tous les types</option>
+              <option value="serie">Séries</option>
+              <option value="serie_animee">Séries animées</option>
+              <option value="film">Films</option>
+              <option value="manga">Mangas</option>
+            </select>
+          </div>
         </header>
 
         <div className="title-grid-wrap">
@@ -165,7 +190,7 @@ export default function App() {
             <p className="empty-state">Chargement des titres…</p>
           ) : visibleTitles.length === 0 ? (
             <div className="empty-state">
-              <p>{currentTab.empty}</p>
+              <p>{searchQuery.trim() ? `Aucun résultat pour « ${searchQuery.trim()} ».` : currentTab.empty}</p>
             </div>
           ) : (
             <div className="title-grid">
