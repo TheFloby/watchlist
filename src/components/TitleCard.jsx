@@ -46,6 +46,15 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
     ? `Saison ${title.current_season}${title.total_seasons ? ` / ${title.total_seasons}` : ''}`
     : null
 
+  function watchNewSeason() {
+    if (!confirm(`Une nouvelle saison de « ${title.name} » est sortie. La mettre dans À voir ?`)) return
+    update({
+      status: 'a_voir',
+      current_season: (title.current_season || 0) + 1,
+      new_season_available: false,
+    })
+  }
+
   return (
     <article className="title-card">
       <div className="title-card-poster">
@@ -57,6 +66,9 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
           </div>
         )}
         <span className="title-card-type">{TYPE_LABELS[title.type]}</span>
+        {title.new_season_available && (
+          <span className="title-card-badge">Nouvelle saison</span>
+        )}
       </div>
 
       <div className="title-card-body">
@@ -154,7 +166,13 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
             </button>
           )}
 
-          {/* --- DÉJÀ VU : revoir depuis le début --- */}
+          {/* --- TERMINÉ : voir la nouvelle saison (si dispo) et/ou revoir depuis le début --- */}
+          {title.status === 'vu' && title.new_season_available && (
+            <button className="btn btn-action" disabled={busy} onClick={watchNewSeason}>
+              Voir la nouvelle saison
+            </button>
+          )}
+
           {title.status === 'vu' && (
             <button
               className="btn btn-action"

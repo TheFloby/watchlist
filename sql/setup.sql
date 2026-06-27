@@ -24,6 +24,14 @@ create table if not exists titles (
   -- pour pouvoir reprendre exactement où on en était.
   current_season int,
 
+  -- Identifiant TMDB de la série (permet de revérifier le nombre de saisons plus tard).
+  -- Vide pour les films, mangas, ou séries ajoutées à la main.
+  tmdb_id int,
+
+  -- Vrai si une nouvelle saison est sortie depuis qu'on a marqué le titre "Terminé"
+  -- (détecté automatiquement une fois par jour, voir /api/check-new-seasons)
+  new_season_available boolean not null default false,
+
   -- Qui a ajouté/proposé ce titre
   added_by uuid references auth.users(id) on delete set null,
   added_by_email text,

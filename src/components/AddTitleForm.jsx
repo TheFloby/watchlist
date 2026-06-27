@@ -12,7 +12,7 @@ const TYPES = [
 const STATUSES = [
   { value: 'a_voir', label: 'À voir' },
   { value: 'en_cours', label: 'En cours' },
-  { value: 'vu', label: 'Déjà vu' },
+  { value: 'vu', label: 'Terminé' },
 ]
 
 const HAS_SEASONS = new Set(['serie', 'serie_animee'])
@@ -30,6 +30,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
   const [imageUrl, setImageUrl] = useState('')
   const [type, setType] = useState('serie')
   const [totalSeasons, setTotalSeasons] = useState(null)
+  const [tmdbId, setTmdbId] = useState(null)
   const [manualMode, setManualMode] = useState(false)
   const [directStatus, setDirectStatus] = useState('vu')
   const [currentSeason, setCurrentSeason] = useState(1)
@@ -73,6 +74,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
     setQuery(result.name + (result.year ? ` (${result.year})` : ''))
     setResults([])
     setTotalSeasons(null)
+    setTmdbId(result.tmdbType === 'serie' ? result.tmdbId : null)
 
     // Pour les séries, on va chercher le nombre de saisons en arrière-plan
     if (result.tmdbType === 'serie' && result.tmdbId) {
@@ -86,6 +88,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
     setResults([])
     setName(query)
     setTotalSeasons(null)
+    setTmdbId(null)
   }
 
   async function handleSubmit(e) {
@@ -113,6 +116,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
       status: finalStatus,
       total_seasons: isDirectSeries ? totalSeasons : null,
       current_season: finalCurrentSeason,
+      tmdb_id: type === 'serie' ? tmdbId : null,
       added_by: user.id,
       added_by_email: user.email,
     })

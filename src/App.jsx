@@ -10,7 +10,7 @@ const TABS = [
   { key: 'en_cours', label: 'En cours', icon: '◷', empty: 'Rien en cours pour l’instant.' },
   { key: 'a_voir', label: 'À voir', icon: '◎', empty: 'Rien à voir pour le moment.' },
   { key: 'proposition', label: 'Propositions', icon: '✉', empty: 'Aucune proposition en attente.' },
-  { key: 'vu', label: 'Déjà vu', icon: '✓', empty: 'Rien de regardé encore. Ça va vite changer.' },
+  { key: 'vu', label: 'Terminé', icon: '✓', empty: 'Rien de terminé encore. Ça va vite changer.' },
   { key: 'jamais_fini', label: 'Jamais fini', icon: '⊘', empty: 'Aucun abandon, bravo la persévérance.' },
   { key: 'refusee', label: 'Refusées', icon: '✕', empty: 'Aucune proposition refusée.' },
 ]
