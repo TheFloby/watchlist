@@ -57,6 +57,42 @@ export default async function handler(req, res) {
   const TMDB_API_KEY = process.env.TMDB_API_KEY
   const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD, comparable directement aux air_date de TMDB
 
+  // Mode diagnostic ciblé : ajoute &debugTitle=Ao%20Ashi à l'URL pour voir en détail
+  // ce que la base de données ET TMDB renvoient pour un titre précis, sans rien modifier.
+  if (req.query.debugTitle) {
+    const { data: match } = await supabase
+      .from('titles')
+      .select('id, name, status, type, tmdb_id, total_seasons, current_season, new_season_available, upcoming_season_date, upcoming_season_number')
+      .ilike('name', `%${req.query.debugTitle}%`)
+      .limit(1)
+      .single()
+
+    if (!match) {
+      return res.status(200).json({ error: 'Titre introuvable en base' })
+    }
+
+    let rawTmdb = null
+    if (match.tmdb_id) {
+      const url = `https://api.themoviedb.org/3/tv/${match.tmdb_id}?api_key=${TMDB_API_KEY}&language=fr-FR`
+      const r = await fetch(url)
+      const data = await r.json()
+      rawTmdb = {
+        number_of_seasons: data.number_of_seasons,
+        seasons: (data.seasons || []).map((s) => ({
+          season_number: s.season_number,
+          air_date: s.air_date,
+          name: s.name,
+        })),
+      }
+    }
+
+    return res.status(200).json({
+      today,
+      db_row: match,
+      tmdb_raw: rawTmdb,
+    })
+  }
+
   // On récupère :
   // - tous les titres qui ont déjà un tmdb_id enregistré (peu importe leur type affiché,
   //   y compris "Manga" si l'oeuvre a été trouvée via TMDB puis reclassée) ;
