@@ -1,17 +1,23 @@
 :root {
-  --bg: #161112;
-  --bg-elevated: #1f1819;
-  --bg-card: #221a1b;
-  --rule: #382b2c;
-  --cream: #f3ead9;
-  --cream-dim: #c9bdab;
-  --accent: #e35c34;
-  --accent-dim: #8a3a22;
-  --accent-glow: rgba(227, 92, 52, 0.25);
-  --gold: #d4af6a;
-  --green: #6a9a6e;
+  --bg: #0a0d0b;
+  --bg-elevated: #0e1210;
+  --bg-card: #131a15;
+  --rule: #1f2b22;
+  --rule-strong: #2a3a2d;
+  --cream: #eef4eb;
+  --cream-dim: #9aa89a;
+  --cream-faint: #5a6a5a;
 
-  --font-display: 'Bricolage Grotesque', sans-serif;
+  --accent: #6ddb4e;
+  --accent-dim: #2f5a23;
+  --accent-glow: rgba(109, 219, 78, 0.16);
+  --accent-text: #9be37f;
+
+  --gold: #d9a94f;
+  --red: #e2574a;
+  --red-dim: rgba(226, 87, 74, 0.14);
+
+  --font-display: 'Space Grotesk', sans-serif;
   --font-body: 'Inter', sans-serif;
 
   --radius: 10px;
@@ -31,9 +37,6 @@ html, body {
 }
 
 body {
-  background-image:
-    radial-gradient(circle at 15% 0%, rgba(227, 92, 52, 0.06), transparent 45%),
-    radial-gradient(circle at 85% 100%, rgba(106, 154, 110, 0.05), transparent 40%);
   min-height: 100vh;
 }
 
@@ -58,7 +61,6 @@ input, select {
   background: var(--accent-glow);
 }
 
-/* Focus visible accessibility */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
@@ -76,7 +78,6 @@ a:focus-visible {
   }
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
 }
@@ -84,6 +85,6 @@ a:focus-visible {
   background: var(--bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--rule);
+  background: var(--rule-strong);
   border-radius: 5px;
 }

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { emailToPseudo } from '../accounts'
 
 const TYPE_LABELS = {
   serie: 'Série',
@@ -7,25 +9,36 @@ const TYPE_LABELS = {
   manga: 'Manga',
 }
 
-const STATUS_LABELS = {
-  a_voir: 'À voir',
-  en_cours: 'En cours',
-  vu: 'Vu',
-}
+const HAS_SEASONS = new Set(['serie', 'serie_animee'])
 
-export default function TitleCard({ title, onChanged }) {
-  async function updateStatus(newStatus) {
-    await supabase.from('titles').update({ status: newStatus }).eq('id', title.id)
+export default function TitleCard({ title, currentUserEmail, onChanged }) {
+  const [busy, setBusy] = useState(false)
+
+  const proposedBy = emailToPseudo(title.added_by_email)
+  const isOwnProposal = title.added_by_email === currentUserEmail
+
+  async function update(fields) {
+    setBusy(true)
+    await supabase.from('titles').update(fields).eq('id', title.id)
+    setBusy(false)
     onChanged()
   }
 
   async function handleDelete() {
     if (!confirm(`Retirer « ${title.name} » de la liste ?`)) return
+    setBusy(true)
     await supabase.from('titles').delete().eq('id', title.id)
+    setBusy(false)
     onChanged()
   }
 
-  const who = title.added_by_email ? title.added_by_email.split('@')[0] : null
+  function changeSeason(e) {
+    update({ current_season: parseInt(e.target.value) })
+  }
+
+  const seasonLabel = title.current_season
+    ? `Saison ${title.current_season}${title.total_seasons ? ` / ${title.total_seasons}` : ''}`
+    : null
 
   return (
     <article className="title-card">
@@ -42,20 +55,77 @@ export default function TitleCard({ title, onChanged }) {
 
       <div className="title-card-body">
         <h3>{title.name}</h3>
-        {who && <p className="title-card-meta">Proposé par {who}</p>}
+
+        {title.status === 'proposition' && proposedBy && (
+          <p className="title-card-meta">Proposé par {proposedBy}</p>
+        )}
+
+        {seasonLabel && title.status !== 'proposition' && (
+          <p className="title-card-meta">{seasonLabel}</p>
+        )}
 
         <div className="title-card-actions">
-          <select
-            value={title.status}
-            onChange={(e) => updateStatus(e.target.value)}
-            className="status-select"
-            aria-label="Changer le statut"
-          >
-            <option value="a_voir">{STATUS_LABELS.a_voir}</option>
-            <option value="en_cours">{STATUS_LABELS.en_cours}</option>
-            <option value="vu">{STATUS_LABELS.vu}</option>
-          </select>
-          <button className="icon-btn icon-btn--danger" onClick={handleDelete} aria-label="Supprimer">
+          {/* --- PROPOSITION : seule l'autre personne peut valider/refuser --- */}
+          {title.status === 'proposition' && (
+            isOwnProposal ? (
+              <p className="title-card-waiting">En attente de validation</p>
+            ) : (
+              <>
+                <button className="btn btn-validate" disabled={busy} onClick={() => update({ status: 'a_voir' })}>
+                  Valider
+                </button>
+                <button className="btn btn-refuse" disabled={busy} onClick={() => update({ status: 'refusee' })}>
+                  Refuser
+                </button>
+              </>
+            )
+          )}
+
+          {/* --- À VOIR : on commence --- */}
+          {title.status === 'a_voir' && (
+            <button
+              className="btn btn-action"
+              disabled={busy}
+              onClick={() => update({ status: 'en_cours', current_season: HAS_SEASONS.has(title.type) ? 1 : null })}
+            >
+              On commence
+            </button>
+          )}
+
+          {/* --- EN COURS : menu saison (si applicable) + terminé/abandonner --- */}
+          {title.status === 'en_cours' && (
+            <>
+              {HAS_SEASONS.has(title.type) && (
+                <select
+                  className="status-select"
+                  value={title.current_season || 1}
+                  onChange={changeSeason}
+                  aria-label="Saison en cours"
+                >
+                  {Array.from({ length: Math.max(title.total_seasons || 1, title.current_season || 1) }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>
+                      Saison {n}{title.total_seasons ? ` / ${title.total_seasons}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button className="btn btn-action" disabled={busy} onClick={() => update({ status: 'vu' })}>
+                Terminé
+              </button>
+              <button className="btn btn-abandon" disabled={busy} onClick={() => update({ status: 'jamais_fini' })}>
+                Abandonner
+              </button>
+            </>
+          )}
+
+          {/* --- JAMAIS FINI : reprendre --- */}
+          {title.status === 'jamais_fini' && (
+            <button className="btn btn-action" disabled={busy} onClick={() => update({ status: 'en_cours' })}>
+              Reprendre
+            </button>
+          )}
+
+          <button className="icon-btn icon-btn--danger" onClick={handleDelete} aria-label="Supprimer" disabled={busy}>
             ✕
           </button>
         </div>

@@ -1,17 +1,33 @@
 -- ============================================
 -- Script de création de la base de données
--- Series Tracker
+-- Watchlist TFCU
 -- ============================================
+-- Si tu avais déjà lancé une ancienne version de ce script,
+-- exécute d'abord : drop table if exists titles cascade;
 
--- Table principale : toutes les séries/films/mangas
 create table if not exists titles (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   image_url text,
   type text not null check (type in ('serie', 'serie_animee', 'film', 'manga')),
-  status text not null check (status in ('a_voir', 'en_cours', 'vu')) default 'a_voir',
+
+  -- Statut dans le workflow :
+  -- proposition -> refusee | a_voir -> en_cours -> vu | jamais_fini
+  status text not null check (
+    status in ('proposition', 'refusee', 'a_voir', 'en_cours', 'vu', 'jamais_fini')
+  ) default 'proposition',
+
+  -- Nombre total de saisons (rempli automatiquement via TMDB pour les séries/séries animées)
+  total_seasons int,
+
+  -- Saison actuelle (où on s'est arrêté). Conservée même si on abandonne (jamais_fini),
+  -- pour pouvoir reprendre exactement où on en était.
+  current_season int,
+
+  -- Qui a ajouté/proposé ce titre
   added_by uuid references auth.users(id) on delete set null,
   added_by_email text,
+
   created_at timestamp with time zone default now()
 );
 

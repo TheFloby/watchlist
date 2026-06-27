@@ -1,87 +1,122 @@
-# Watchlist 🎬
+# Watchlist TFCU 🛸
 
-Site perso pour toi et ton pote pour suivre les séries/films/mangas : ce que vous avez déjà vu, ce que vous proposez, et ce que vous regardez en ce moment.
+Site perso pour Thomas et Flo : propositions, validations croisées, suivi des saisons, et tout l'historique (vu / en cours / abandonné).
 
-## 1. Le logo
+## Nouveauté de cette version
 
-Le logo TFCU est déjà intégré dans `public/logo.png` — rien à faire, il s'affiche automatiquement dans le header et comme icône d'onglet du navigateur.
+Cette mise à jour change pas mal de choses par rapport à la première version : nouveau workflow (Propositions → Refusées / À voir → En cours → Déjà vu / Jamais fini), suivi des saisons, sidebar avec connexion par avatar, nouvelle direction artistique, mobile + installation en app.
 
-## 2. La recherche automatique (TMDB)
+**Si tu avais déjà la première version en ligne avec des données (ex: Game of Thrones)**, il faut migrer ta base — voir étape 1 ci-dessous avant de remplacer le code.
 
-La clé API est déjà intégrée dans `src/config.js` — rien à faire, la recherche fonctionnera dès le déploiement.
+## 1. Mettre à jour la base de données (Supabase)
 
-Petite précision technique : cette clé est visible dans le code envoyé au navigateur (c'est inévitable pour ce type de clé "publique" côté client). Ça ne pose pas de problème pour un usage personnel comme le vôtre — au pire quelqu'un pourrait l'utiliser pour faire ses propres recherches de films sur TMDB, rien de grave. Si un jour ça devenait gênant, tu peux régénérer une nouvelle clé depuis ton compte TMDB.
+### Si tu as déjà des titres enregistrés (cas probable)
 
-## 3. Créer la base de données (Supabase)
+1. Dans Supabase → **SQL Editor** → **New query**.
+2. Copie-colle le contenu de `sql/migration.sql`, clique **Run**. Ça ajoute les nouvelles colonnes sans rien supprimer.
+3. Le titre que vous aviez déjà (Game of Thrones) sera toujours là, mais avec l'ancien statut "vu" — il apparaîtra donc directement dans l'onglet **Déjà vu**, ce qui correspond à ce qu'il était.
 
-1. Va dans ton projet Supabase → menu de gauche → **SQL Editor**.
-2. Clique sur **New query**.
-3. Ouvre le fichier `sql/setup.sql` de ce dossier, copie tout son contenu, colle-le dans l'éditeur.
-4. Clique sur **Run**. Ça crée la table `titles` et les règles de sécurité.
+### Si tu repars de zéro
 
-## 4. Activer la confirmation par email (optionnel)
+1. Dans Supabase → **SQL Editor** → **New query**.
+2. Copie-colle le contenu de `sql/setup.sql`, clique **Run**.
 
-Par défaut, Supabase demande une confirmation par email à l'inscription. Pour un usage entre potes, tu peux désactiver ça pour simplifier :
+## 2. Le logo et les avatars
 
-1. Dans Supabase → **Authentication** → **Providers** → **Email**.
-2. Désactive **Confirm email** si tu veux que l'inscription soit immédiate.
+Déjà tout inclus dans `public/` — logo TFCU, avatars individuels de Thomas et Flo (découpés depuis votre logo), et icônes pour l'installation en app. Rien à faire.
 
-## 5. Mettre le code sur GitHub
+## 3. La recherche automatique (TMDB)
 
-1. Crée un nouveau repository sur [github.com/new](https://github.com/new) (par exemple nommé `watchlist`). Laisse-le vide (sans README).
-2. Sur ton ordinateur, dans un terminal, place-toi dans ce dossier puis :
+La clé API est déjà intégrée dans `src/config.js`. Nouveauté : elle récupère maintenant aussi le nombre de saisons des séries automatiquement.
 
-```bash
-git init
+## 4. Créer les comptes (si pas déjà fait)
+
+Toujours pas d'inscription publique. Si tu as déjà créé les comptes Thomas et Flo dans Supabase lors de la dernière mise à jour, **tu n'as rien à refaire**.
+
+Sinon : Supabase → **Authentication** → **Users** → **Add user** → **Create new user** :
+- Thomas : email `thomas@watchlist.local`, mot de passe de ton choix, coche **Auto Confirm User**
+- Flo : email `flo@watchlist.local`, mot de passe de ton choix, coche **Auto Confirm User**
+
+Sur le site, on ne tape plus de pseudo : on clique sur son avatar, puis on tape son mot de passe.
+
+## 5. Mettre à jour le code (GitHub)
+
+Comme c'est une grosse mise à jour, le plus simple est de **remplacer tout le contenu de ton dossier local** par celui de ce zip (sauf si tu as fait des modifs perso entre-temps), puis :
+
+```powershell
+cd C:\Users\flori\Downloads\watchlist
 git add .
-git commit -m "Premier envoi"
-git branch -M main
-git remote add origin https://github.com/TON-PSEUDO/watchlist.git
-git push -u origin main
+git commit -m "Refonte : workflow complet, saisons, sidebar, avatars, PWA"
+git push
 ```
 
-(Remplace `TON-PSEUDO` par ton nom d'utilisateur GitHub — l'adresse exacte est affichée sur la page de ton nouveau repo vide.)
+Vercel redéploiera automatiquement en ~1 minute.
 
-## 6. Déployer sur Vercel
+## 6. Installer le site comme une app (PWA)
 
-1. Va sur [vercel.com](https://vercel.com), connecte-toi avec GitHub.
-2. Clique **Add New** → **Project**.
-3. Choisis ton repo `watchlist`.
-4. Vercel détecte automatiquement que c'est un projet Vite. Laisse les réglages par défaut.
-5. Clique **Deploy**.
+Une fois le site déployé et ouvert sur ton téléphone :
 
-Après 1 minute, tu as une URL du type `https://watchlist-xxxx.vercel.app` que tu peux partager avec ton pote.
+**Sur iPhone (Safari)** : bouton de partage (carré avec flèche vers le haut) → **Sur l'écran d'accueil** → Ajouter.
 
-## 7. Utilisation au quotidien
+**Sur Android (Chrome)** : menu (⋮) en haut à droite → **Ajouter à l'écran d'accueil** (ou une bannière d'installation peut apparaître automatiquement).
 
-- Chacun crée son compte avec son email (bouton "S'inscrire" sur l'écran de connexion).
-- Le bouton **+ Ajouter** permet d'ajouter un titre avec une image (tu peux chercher l'affiche sur Google Images, clic droit → "Copier l'adresse de l'image", et coller le lien).
-- On peut changer le statut d'un titre directement depuis sa carte (À voir / En cours / Vu).
-- La croix sur chaque carte permet de la supprimer.
+L'icône TFCU apparaît alors comme une vraie app, qui s'ouvre en plein écran.
+
+## 7. Comment ça fonctionne maintenant
+
+**Le workflow complet :**
+
+```
+Propositions ──valide──→ À voir ──"On commence"──→ En cours ──Terminé──→ Déjà vu
+     │                                                  │
+   refuse                                          Abandonner
+     │                                                  │
+     ▼                                                  ▼
+ Refusées                                        Jamais fini
+                                                        │
+                                                   "Reprendre"
+                                                        │
+                                                        ▼
+                                                    En cours
+```
+
+- **Proposer un titre** : bouton "+ Proposer un titre" dans la sidebar. Le titre part dans l'onglet **Propositions**.
+- **Valider/Refuser** : dans l'onglet Propositions, seule la personne qui n'a **pas** proposé le titre voit les boutons Valider/Refuser (pour éviter de valider sa propre proposition).
+- **Saisons** : pour les séries et séries animées, le nombre de saisons est récupéré automatiquement via TMDB. Une fois en cours, un menu déroulant permet d'indiquer où vous en êtes.
+- **Abandonner** : depuis En cours, si vous arrêtez une série en cours de route, elle part dans **Jamais fini** en gardant en mémoire la saison où vous étiez. Le bouton "Reprendre" la renvoie en cours, à la bonne saison.
+- **Films et mangas** : pas de gestion de saisons, juste À voir → En cours → Terminé.
 
 ## Pour faire des modifications plus tard
 
-Tu peux toujours revenir me voir avec ce code et me dire ce que tu veux changer ou ajouter (une note sur 10, un système de votes, un onglet "favoris"...) — je modifierai les fichiers et tu n'auras qu'à refaire `git add . && git commit -m "..." && git push` pour mettre à jour le site en ligne automatiquement.
+Reviens avec ce code et explique ce que tu veux changer — je modifierai les fichiers et tu n'auras qu'à refaire `git add . && git commit -m "..." && git push`.
 
 ## Structure du projet
 
 ```
 series-tracker/
-├── sql/setup.sql          → script à lancer dans Supabase
+├── sql/
+│   ├── setup.sql          → création complète (base vide)
+│   └── migration.sql      → mise à jour d'une base existante
 ├── public/
-│   └── logo.png           → logo TFCU (déjà inclus)
+│   ├── logo.png           → logo TFCU (header, favicon)
+│   ├── pwa-192.png, pwa-512.png → icônes d'installation app
+│   ├── manifest.json      → config PWA
+│   └── avatars/
+│       ├── thomas.png
+│       └── flo.png
 ├── src/
+│   ├── accounts.js        → les 2 comptes (pseudo + avatar + conversion email)
 │   ├── supabaseClient.js  → connexion à la base de données
 │   ├── config.js          → ta clé API TMDB
-│   ├── tmdb.js            → recherche automatique de films/séries
-│   ├── App.jsx            → page principale (les 3 onglets)
+│   ├── tmdb.js            → recherche + récupération du nombre de saisons
+│   ├── App.jsx            → page principale (sidebar + 6 onglets)
 │   ├── App.css            → tous les styles visuels
-│   ├── index.css          → styles globaux
+│   ├── index.css          → styles globaux, palette de couleurs
 │   ├── main.jsx           → point d'entrée
 │   └── components/
-│       ├── Auth.jsx          → écran de connexion / inscription
-│       ├── AddTitleForm.jsx  → formulaire d'ajout (avec recherche TMDB)
-│       └── TitleCard.jsx     → carte d'affichage d'un titre
+│       ├── Auth.jsx          → écran de connexion (sélection avatar + mot de passe)
+│       ├── AddTitleForm.jsx  → formulaire de proposition (avec recherche TMDB)
+│       └── TitleCard.jsx     → carte d'un titre, avec ses actions selon le statut
 ├── index.html
 ├── package.json
 └── vite.config.js

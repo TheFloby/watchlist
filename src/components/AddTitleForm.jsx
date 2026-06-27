@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
-import { searchTitles } from '../tmdb'
+import { searchTitles, fetchSeasonCount } from '../tmdb'
 
 const TYPES = [
   { value: 'serie', label: 'Série' },
@@ -9,7 +9,9 @@ const TYPES = [
   { value: 'manga', label: 'Manga' },
 ]
 
-export default function AddTitleForm({ user, defaultStatus, onAdded, onClose }) {
+const HAS_SEASONS = new Set(['serie', 'serie_animee'])
+
+export default function AddTitleForm({ user, onAdded, onClose }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
@@ -19,7 +21,7 @@ export default function AddTitleForm({ user, defaultStatus, onAdded, onClose }) 
   const [name, setName] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [type, setType] = useState('serie')
-  const [status, setStatus] = useState(defaultStatus || 'a_voir')
+  const [totalSeasons, setTotalSeasons] = useState(null)
   const [manualMode, setManualMode] = useState(false)
 
   const [loading, setLoading] = useState(false)
@@ -54,18 +56,26 @@ export default function AddTitleForm({ user, defaultStatus, onAdded, onClose }) 
     return () => clearTimeout(debounceRef.current)
   }, [query, manualMode])
 
-  function pickResult(result) {
+  async function pickResult(result) {
     setName(result.name)
     setImageUrl(result.image_url || '')
     setType(result.tmdbType)
     setQuery(result.name + (result.year ? ` (${result.year})` : ''))
     setResults([])
+    setTotalSeasons(null)
+
+    // Pour les séries, on va chercher le nombre de saisons en arrière-plan
+    if (result.tmdbType === 'serie' && result.tmdbId) {
+      const count = await fetchSeasonCount(result.tmdbId)
+      setTotalSeasons(count)
+    }
   }
 
   function switchToManual() {
     setManualMode(true)
     setResults([])
     setName(query)
+    setTotalSeasons(null)
   }
 
   async function handleSubmit(e) {
@@ -79,7 +89,8 @@ export default function AddTitleForm({ user, defaultStatus, onAdded, onClose }) 
       name: finalName,
       image_url: imageUrl.trim() || null,
       type,
-      status,
+      status: 'proposition',
+      total_seasons: HAS_SEASONS.has(type) ? totalSeasons : null,
       added_by: user.id,
       added_by_email: user.email,
     })
@@ -100,9 +111,12 @@ export default function AddTitleForm({ user, defaultStatus, onAdded, onClose }) 
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Ajouter un titre</h2>
+          <h2>Proposer un titre</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Fermer">✕</button>
         </div>
+        <p className="modal-subtitle">
+          Ça partira dans l'onglet Propositions, en attente de validation.
+        </p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           {!manualMode ? (
@@ -150,7 +164,10 @@ export default function AddTitleForm({ user, defaultStatus, onAdded, onClose }) 
               </div>
 
               {hasSelection && (
-                <p className="search-selected">✓ « {name} » sélectionné</p>
+                <p className="search-selected">
+                  ✓ « {name} » sélectionné
+                  {type === 'serie' && totalSeasons && ` · ${totalSeasons} saison${totalSeasons > 1 ? 's' : ''}`}
+                </p>
               )}
 
               <button type="button" className="link-btn" onClick={switchToManual}>
@@ -181,6 +198,19 @@ export default function AddTitleForm({ user, defaultStatus, onAdded, onClose }) 
                 />
               </label>
 
+              {HAS_SEASONS.has(type) && (
+                <label className="field">
+                  <span>Nombre de saisons (si tu le sais)</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={totalSeasons || ''}
+                    onChange={(e) => setTotalSeasons(e.target.value ? parseInt(e.target.value) : null)}
+                    placeholder="Ex : 5"
+                  />
+                </label>
+              )}
+
               <button
                 type="button"
                 className="link-btn"
@@ -189,6 +219,7 @@ export default function AddTitleForm({ user, defaultStatus, onAdded, onClose }) 
                   setQuery('')
                   setName('')
                   setImageUrl('')
+                  setTotalSeasons(null)
                 }}
               >
                 ← Revenir à la recherche
@@ -205,19 +236,10 @@ export default function AddTitleForm({ user, defaultStatus, onAdded, onClose }) 
             </select>
           </label>
 
-          <label className="field">
-            <span>Statut</span>
-            <select value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="a_voir">À voir (proposition)</option>
-              <option value="en_cours">En cours</option>
-              <option value="vu">Déjà vu</option>
-            </select>
-          </label>
-
           {error && <p className="auth-message auth-message--error">{error}</p>}
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Ajout…' : 'Ajouter'}
+            {loading ? 'Envoi…' : 'Proposer'}
           </button>
         </form>
       </div>
