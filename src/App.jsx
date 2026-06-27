@@ -15,10 +15,23 @@ const TABS = [
   { key: 'refusee', label: 'Refusées', icon: '✕', empty: 'Aucune proposition refusée.' },
 ]
 
+const VALID_TABS = TABS.map((t) => t.key)
+
+// Récupère le dernier onglet visité (sauvegardé dans le navigateur), pour ne pas
+// retomber sur "En cours" à chaque rechargement de la page.
+function getInitialTab() {
+  try {
+    const saved = localStorage.getItem('watchlist_active_tab')
+    return VALID_TABS.includes(saved) ? saved : 'en_cours'
+  } catch {
+    return 'en_cours'
+  }
+}
+
 export default function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('en_cours')
+  const [activeTab, setActiveTab] = useState(getInitialTab)
   const [titles, setTitles] = useState([])
   const [loadingTitles, setLoadingTitles] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -93,6 +106,12 @@ export default function App() {
   function selectTab(key) {
     setActiveTab(key)
     setSidebarOpen(false)
+    try {
+      localStorage.setItem('watchlist_active_tab', key)
+    } catch {
+      // Si le navigateur bloque localStorage (mode privé strict, etc.), on continue
+      // sans bloquer l'app — la persistance ne fonctionnera juste pas cette fois.
+    }
   }
 
   return (
