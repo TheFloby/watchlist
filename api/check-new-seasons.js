@@ -12,11 +12,34 @@ import { createClient } from '@supabase/supabase-js'
 // - TMDB_API_KEY            : la même clé que celle utilisée côté site
 // - CRON_SECRET             : générée automatiquement par Vercel, sert à vérifier que l'appel
 //                               vient bien de Vercel et pas de quelqu'un d'autre sur internet
+//
+// Pour tester manuellement sans attendre l'horaire planifié, ouvre dans ton navigateur :
+// https://ton-site.vercel.app/api/check-new-seasons?secret=LA_VALEUR_DE_CRON_SECRET
+// (la valeur de CRON_SECRET se trouve dans Vercel → Settings → Environment Variables)
 
 export default async function handler(req, res) {
-  // Vérifie que la requête vient bien de Vercel (et pas d'un appel extérieur non autorisé)
+  // Autorise soit l'appel automatique de Vercel (header), soit un test manuel via ?secret=...
   const authHeader = req.headers.authorization
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const expected = process.env.CRON_SECRET
+  const provided = req.query.secret
+
+  const isVercelCron = authHeader === `Bearer ${expected}`
+  const isManualTest = provided === expected
+
+  // Mode diagnostic : ajoute &debug=1 à l'URL pour voir, sans révéler les vraies valeurs,
+  // si la variable d'environnement existe bien et si la comparaison correspond.
+  if (req.query.debug === '1') {
+    return res.status(200).json({
+      env_var_exists: !!expected,
+      env_var_length: expected ? expected.length : 0,
+      provided_length: provided ? provided.length : 0,
+      env_var_preview: expected ? `${expected.slice(0, 3)}...${expected.slice(-3)}` : null,
+      provided_preview: provided ? `${provided.slice(0, 3)}...${provided.slice(-3)}` : null,
+      match: isManualTest,
+    })
+  }
+
+  if (!isVercelCron && !isManualTest) {
     return res.status(401).json({ error: 'Non autorisé' })
   }
 
