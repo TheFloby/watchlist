@@ -4,63 +4,26 @@ Site perso pour Thomas et Flo : propositions, validations croisées, suivi des s
 
 ## Nouveautés de cette mise à jour
 
-- Renommage de l'onglet **"Déjà vu"** en **"Terminé"**
-- **Vérification automatique quotidienne** : chaque jour, le site vérifie tout seul sur TMDB si une nouvelle saison est sortie pour vos séries Terminées
-- **Badge "Nouvelle saison"** sur la carte concernée + bouton **"Voir la nouvelle saison"** qui la renvoie dans À voir, prête à être commencée à la bonne saison
-- Favicon : retour au logo complet (comme avant)
+- **Distinction saison sortie / saison annoncée** : si TMDB connaît la date de sortie d'une prochaine saison mais qu'elle n'est pas encore diffusée, un badge informatif "Saison X le JJ/MM" apparaît (sans bouton d'action). Dès que la date est passée, ça redevient le badge "Nouvelle saison" classique avec son bouton.
+- Plusieurs petits correctifs : recherche par nom sur tous les onglets, tri automatique des nouvelles saisons en haut de "Terminé", fix du zoom automatique sur iPhone dans les champs de texte, et prise en charge des mangas dont l'adaptation animée a des saisons (ex: Ao Ashi).
 
-Cette mise à jour est plus technique que les précédentes : en plus du code, il faut configurer 4 réglages côté Vercel et lancer une migration SQL. Suis les étapes dans l'ordre, c'est expliqué en détail.
+Une nouvelle migration SQL est nécessaire pour cette mise à jour (ajout de 2 colonnes). Pas de nouveau réglage Vercel cette fois — tout ce qui était déjà configuré (variables d'environnement, cron) reste valable.
 
 ## 1. Mettre à jour la base de données (Supabase)
 
 1. Dans Supabase → **SQL Editor** → **New query**.
-2. Copie-colle le contenu de `sql/migration_2.sql`, clique **Run**.
+2. Copie-colle le contenu de `sql/migration_3.sql`, clique **Run**.
 
-## 2. Récupérer 2 informations dans Supabase
-
-On va avoir besoin de la clé "service_role" de Supabase (différente de celle déjà utilisée sur le site — c'est une clé d'administration, plus puissante, qui ne doit **jamais** apparaître dans le code, seulement dans la configuration de Vercel).
-
-1. Dans Supabase → **Settings** (engrenage en bas à gauche) → **API Keys** (ou **API**).
-2. Note ces deux valeurs :
-   - **Project URL** (ressemble à `https://zkkfomckqijuoaerudoy.supabase.co`)
-   - La clé **`service_role`** (parfois listée sous "secret" — **pas** la clé `anon`/`publishable` déjà utilisée ailleurs)
-
-⚠️ Cette clé `service_role` est sensible : ne la mets jamais dans un fichier du projet, ne la partage à personne d'autre que toi. On va la mettre uniquement dans les réglages Vercel à l'étape suivante.
-
-## 3. Configurer les variables d'environnement sur Vercel
-
-1. Va sur [vercel.com](https://vercel.com), ouvre ton projet `watchlist`.
-2. Clique sur **Settings** (en haut) → **Environment Variables** (menu de gauche).
-3. Ajoute ces 3 variables une par une (nom exact à gauche, valeur à droite, puis **Save**) :
-
-| Nom de la variable | Valeur |
-|---|---|
-| `SUPABASE_URL` | L'URL de ton projet Supabase (récupérée à l'étape 2) |
-| `SUPABASE_SERVICE_ROLE_KEY` | La clé `service_role` (récupérée à l'étape 2) |
-| `TMDB_API_KEY` | `87328bd4da01ef3ef5657578af186848` (la même clé déjà utilisée sur le site) |
-
-(`CRON_SECRET` n'est pas à ajouter : Vercel la crée lui-même automatiquement dès qu'il détecte un cron job dans le projet.)
-
-4. Une fois les 3 variables ajoutées, va dans l'onglet **Deployments**, clique sur les 3 petits points du dernier déploiement → **Redeploy**, pour que ces nouveaux réglages soient bien pris en compte.
-
-## 4. Mettre à jour le code (GitHub)
+## 2. Mettre à jour le code (GitHub)
 
 ```powershell
-cd C:\Users\flori\Downloads\watchlist
+cd C:\Users\flori\OneDrive\Projets\watchlist
 git add .
-git commit -m "Detection automatique des nouvelles saisons"
+git commit -m "Date de sortie des prochaines saisons annoncees"
 git push
 ```
 
-Vercel redéploiera automatiquement. Comme il y a maintenant un fichier `vercel.json`, Vercel va aussi enregistrer le cron job automatiquement à ce moment-là — rien d'autre à faire de ton côté.
-
-## 5. Vérifier que ça fonctionne
-
-Le cron job se déclenche une fois par jour à 6h du matin (heure de Paris l'été, 7h l'hiver). Tu n'as pas besoin d'attendre le lendemain pour vérifier que c'est bien configuré :
-
-1. Sur Vercel, va dans l'onglet **Cron Jobs** de ton projet (dans le menu du haut).
-2. Tu devrais voir `/api/check-new-seasons` listé avec sa prochaine exécution prévue.
-3. Tu peux cliquer sur **Run** (ou l'équivalent affiché) pour le déclencher manuellement tout de suite, et voir le résultat.
+Vercel redéploiera automatiquement, en reprenant les variables d'environnement déjà configurées (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TMDB_API_KEY`, `CRON_SECRET`) — rien à reconfigurer.
 
 ## Comment ça fonctionne
 
@@ -86,9 +49,14 @@ Propositions ──valide──→ À voir ──"On commence"──→ En cours
 - **Saisons** : pour les séries et séries animées, le nombre de saisons est récupéré automatiquement via TMDB.
 - **Abandonner** : depuis En cours, part dans **Jamais fini** en gardant la saison où vous étiez. "Reprendre" la renvoie en cours.
 - **Revoir** : depuis Terminé, repart en cours à la saison 1 (rewatch complet).
-- **Nouvelle saison automatique** : chaque jour, le site vérifie vos séries Terminées sur TMDB. Si une nouvelle saison est sortie, un badge apparaît et un bouton "Voir la nouvelle saison" envoie la série dans À voir, à la bonne saison (celle juste après la dernière vue). Ça ne s'applique pas aux séries dans Jamais fini — celles-là restent gérées à la main.
-- **Films et mangas** : pas de gestion de saisons, juste À voir → En cours → Terminé.
+- **Nouvelle saison automatique** : chaque jour, le site vérifie vos séries Terminées sur TMDB.
+  - Si une nouvelle saison est déjà **sortie**, un badge vert "Nouvelle saison" apparaît et un bouton "Voir la nouvelle saison" envoie la série dans À voir, à la bonne saison.
+  - Si une prochaine saison est **annoncée mais pas encore diffusée**, un badge neutre "Saison X le JJ/MM" s'affiche à titre informatif (pas de bouton, rien à faire pour l'instant). Il se transforme automatiquement en badge vert le jour où la saison sort vraiment.
+  - Ça ne s'applique pas aux séries dans Jamais fini — celles-là restent gérées à la main.
+- **Films** : pas de gestion de saisons, juste À voir → En cours → Terminé.
+- **Mangas** : pas de saisons par défaut, sauf si le manga a été trouvé via la recherche TMDB (son adaptation animée) — dans ce cas il a aussi un menu de saisons et profite de la détection automatique, comme une vraie série.
 - **Confirmation** : chaque bouton d'action affiche une popup "Es-tu sûr ?" avant d'appliquer le changement.
+- **Recherche** : un champ de recherche par nom est disponible sur tous les onglets, filtre en temps réel.
 
 ## Pour faire des modifications plus tard
 
@@ -104,7 +72,8 @@ series-tracker/
 ├── sql/
 │   ├── setup.sql              → création complète (base vide)
 │   ├── migration.sql          → mise à jour n°1 (workflow, saisons)
-│   └── migration_2.sql        → mise à jour n°2 (détection nouvelle saison)
+│   ├── migration_2.sql        → mise à jour n°2 (détection nouvelle saison)
+│   └── migration_3.sql        → mise à jour n°3 (date de saison annoncée)
 ├── public/
 │   ├── logo.png               → logo TFCU complet (header, écran de connexion, favicon)
 │   ├── pwa-192.png, pwa-512.png → icônes d'installation app

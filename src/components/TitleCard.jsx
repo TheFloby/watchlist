@@ -20,6 +20,13 @@ function hasSeasons(title) {
   return HAS_SEASONS.has(title.type) || Boolean(title.total_seasons)
 }
 
+// Formate une date ISO (YYYY-MM-DD) en JJ/MM, pour l'affichage du badge "à venir".
+function formatShortDate(isoDate) {
+  if (!isoDate) return null
+  const [, month, day] = isoDate.split('-')
+  return `${day}/${month}`
+}
+
 export default function TitleCard({ title, currentUserEmail, onChanged }) {
   const [busy, setBusy] = useState(false)
 
@@ -77,6 +84,11 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
         <span className="title-card-type">{TYPE_LABELS[title.type]}</span>
         {title.new_season_available && (
           <span className="title-card-badge">Nouvelle saison</span>
+        )}
+        {!title.new_season_available && title.status === 'vu' && title.upcoming_season_date && (
+          <span className="title-card-badge title-card-badge--upcoming">
+            Saison {title.upcoming_season_number} le {formatShortDate(title.upcoming_season_date)}
+          </span>
         )}
       </div>
 

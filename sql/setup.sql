@@ -32,6 +32,13 @@ create table if not exists titles (
   -- (détecté automatiquement une fois par jour, voir /api/check-new-seasons)
   new_season_available boolean not null default false,
 
+  -- Date de sortie d'une prochaine saison ANNONCÉE mais pas encore diffusée
+  -- (ex: TMDB sait qu'une saison 10 existe et sortira le 12/09, mais elle n'est pas
+  -- encore disponible). Différent de new_season_available, qui lui veut dire que la
+  -- saison est déjà sortie et prête à être regardée.
+  upcoming_season_date date,
+  upcoming_season_number int,
+
   -- Qui a ajouté/proposé ce titre
   added_by uuid references auth.users(id) on delete set null,
   added_by_email text,

@@ -589,6 +589,13 @@
   box-shadow: 0 2px 8px rgba(109, 219, 78, 0.35);
 }
 
+.title-card-badge--upcoming {
+  background: var(--bg-elevated);
+  color: var(--cream-dim);
+  border: 1px solid var(--rule-strong);
+  box-shadow: none;
+}
+
 .title-card-body {
   padding: 14px;
   display: flex;
