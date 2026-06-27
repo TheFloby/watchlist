@@ -53,18 +53,32 @@ export default async function handler(req, res) {
 
   const TMDB_API_KEY = process.env.TMDB_API_KEY
 
-  // On récupère TOUTES les séries/séries animées, quel que soit leur statut
-  // (Propositions, À voir, En cours, Terminé, Jamais fini) : le nombre de saisons
-  // doit rester à jour partout. Le badge "nouvelle saison" ne sera affiché que
-  // sur celles marquées "Terminé" (voir plus bas).
-  const { data: titles, error: fetchError } = await supabase
+  // On récupère :
+  // - tous les titres qui ont déjà un tmdb_id enregistré (peu importe leur type affiché,
+  //   y compris "Manga" si l'oeuvre a été trouvée via TMDB puis reclassée) ;
+  // - ET les séries/séries animées qui n'ont pas encore de tmdb_id (ajoutées avant cette
+  //   fonctionnalité, ou via le mode manuel) — pour elles, on va tenter de le retrouver
+  //   par une recherche sur le nom un peu plus bas.
+  // On fait deux requêtes séparées puis on fusionne, plutôt qu'un .or() complexe,
+  // pour rester simple et fiable.
+  const selectFields = 'id, name, status, type, tmdb_id, total_seasons, current_season, new_season_available'
+
+  const { data: withTmdbId, error: errorA } = await supabase
     .from('titles')
-    .select('id, name, status, type, tmdb_id, total_seasons, current_season, new_season_available')
+    .select(selectFields)
+    .not('tmdb_id', 'is', null)
+
+  const { data: seriesWithoutTmdbId, error: errorB } = await supabase
+    .from('titles')
+    .select(selectFields)
+    .is('tmdb_id', null)
     .in('type', ['serie', 'serie_animee'])
 
-  if (fetchError) {
-    return res.status(500).json({ error: fetchError.message })
+  if (errorA || errorB) {
+    return res.status(500).json({ error: (errorA || errorB).message })
   }
+
+  const titles = [...withTmdbId, ...seriesWithoutTmdbId]
 
   const results = []
 

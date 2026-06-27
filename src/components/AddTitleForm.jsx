@@ -98,13 +98,16 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
     setLoading(true)
     setError('')
 
-    const isDirectSeries = HAS_SEASONS.has(type)
+    // On garde le nombre de saisons et le tmdb_id trouvés via la recherche, même si
+    // le type final choisi est "Manga" — l'oeuvre peut très bien avoir été trouvée comme
+    // série animée sur TMDB, puis reclassée en Manga ici. On ne veut pas perdre ces infos,
+    // sinon la vérification automatique des nouvelles saisons ne pourrait plus la suivre.
     const finalStatus = adminMode ? directStatus : 'proposition'
 
     // En mode admin, si le statut choisi est "en_cours" ou "vu", on enregistre
     // une saison cohérente (sinon le menu saison de la carte n'aurait rien à afficher).
     let finalCurrentSeason = null
-    if (isDirectSeries) {
+    if (totalSeasons) {
       if (adminMode && finalStatus === 'en_cours') finalCurrentSeason = currentSeason
       else if (adminMode && finalStatus === 'vu') finalCurrentSeason = totalSeasons || currentSeason
     }
@@ -114,9 +117,9 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
       image_url: imageUrl.trim() || null,
       type,
       status: finalStatus,
-      total_seasons: isDirectSeries ? totalSeasons : null,
+      total_seasons: totalSeasons || null,
       current_season: finalCurrentSeason,
-      tmdb_id: type === 'serie' ? tmdbId : null,
+      tmdb_id: tmdbId || null,
       added_by: user.id,
       added_by_email: user.email,
     })
@@ -194,7 +197,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
               {hasSelection && (
                 <p className="search-selected">
                   ✓ « {name} » sélectionné
-                  {type === 'serie' && totalSeasons && ` · ${totalSeasons} saison${totalSeasons > 1 ? 's' : ''}`}
+                  {totalSeasons && ` · ${totalSeasons} saison${totalSeasons > 1 ? 's' : ''}`}
                 </p>
               )}
 
