@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Cette fonction est appelée automatiquement une fois par jour par Vercel (voir vercel.json).
-// Elle compare le nombre de saisons connu de chaque série "Terminé" avec celui actuel sur TMDB,
-// et marque les séries qui ont une nouvelle saison disponible.
+// Elle vérifie le nombre de saisons actuel sur TMDB pour TOUTES les séries du site
+// (quel que soit leur statut), et met à jour total_seasons si une nouvelle saison est sortie.
+// Le badge "nouvelle saison" + bouton "Voir la nouvelle saison" ne s'affichent que sur les
+// séries marquées "Terminé" — pour les autres statuts, c'est une mise à jour silencieuse
+// qui permet juste au menu déroulant de saisons d'aller plus loin.
 //
 // Variables d'environnement nécessaires (à configurer dans Vercel, jamais dans le code) :
 // - SUPABASE_URL            : l'URL de ton projet Supabase
@@ -50,11 +53,13 @@ export default async function handler(req, res) {
 
   const TMDB_API_KEY = process.env.TMDB_API_KEY
 
-  // On récupère toutes les séries/séries animées marquées "Terminé" (status = 'vu')
+  // On récupère TOUTES les séries/séries animées, quel que soit leur statut
+  // (Propositions, À voir, En cours, Terminé, Jamais fini) : le nombre de saisons
+  // doit rester à jour partout. Le badge "nouvelle saison" ne sera affiché que
+  // sur celles marquées "Terminé" (voir plus bas).
   const { data: titles, error: fetchError } = await supabase
     .from('titles')
-    .select('id, name, type, tmdb_id, total_seasons, current_season, new_season_available')
-    .eq('status', 'vu')
+    .select('id, name, status, type, tmdb_id, total_seasons, current_season, new_season_available')
     .in('type', ['serie', 'serie_animee'])
 
   if (fetchError) {
@@ -97,16 +102,21 @@ export default async function handler(req, res) {
     }
 
     if (currentSeasonCount > title.total_seasons) {
-      // Nouvelle saison détectée !
-      await supabase
-        .from('titles')
-        .update({
-          total_seasons: currentSeasonCount,
-          new_season_available: true,
-        })
-        .eq('id', title.id)
+      // Nouvelle saison détectée ! On met à jour le total_seasons dans tous les cas.
+      // Le badge "nouvelle saison" ne s'affiche que pour les séries Terminées :
+      // pour les autres statuts (En cours, À voir...), le menu déroulant de saisons
+      // ira simplement plus loin, sans badge ni notification.
+      const fields = { total_seasons: currentSeasonCount }
+      if (title.status === 'vu') {
+        fields.new_season_available = true
+      }
 
-      results.push({ name: title.name, status: `nouvelle saison ! ${title.total_seasons} → ${currentSeasonCount}` })
+      await supabase.from('titles').update(fields).eq('id', title.id)
+
+      results.push({
+        name: title.name,
+        status: `nouvelle saison ! ${title.total_seasons} → ${currentSeasonCount}${title.status === 'vu' ? ' (badge activé)' : ' (mise à jour silencieuse)'}`,
+      })
     } else {
       results.push({ name: title.name, status: 'pas de changement' })
     }
