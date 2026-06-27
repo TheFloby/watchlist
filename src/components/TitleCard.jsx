@@ -82,14 +82,6 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
           </div>
         )}
         <span className="title-card-type">{TYPE_LABELS[title.type]}</span>
-        {title.new_season_available && (
-          <span className="title-card-badge">Nouvelle saison</span>
-        )}
-        {!title.new_season_available && title.status === 'vu' && title.upcoming_season_date && (
-          <span className="title-card-badge title-card-badge--upcoming">
-            Saison {title.upcoming_season_number} le {formatShortDate(title.upcoming_season_date)}
-          </span>
-        )}
       </div>
 
       <div className="title-card-body">
@@ -101,6 +93,20 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
 
         {seasonLabel && title.status !== 'proposition' && (
           <p className="title-card-meta">{seasonLabel}</p>
+        )}
+
+        {title.new_season_available && (
+          <p className="title-card-season-notice title-card-season-notice--new">
+            <span className="title-card-season-dot" />
+            Nouvelle saison disponible
+          </p>
+        )}
+
+        {!title.new_season_available && title.status === 'vu' && title.upcoming_season_date && (
+          <p className="title-card-season-notice">
+            <span className="title-card-season-dot" />
+            Saison {title.upcoming_season_number} le {formatShortDate(title.upcoming_season_date)}
+          </p>
         )}
 
         <div className="title-card-actions">
