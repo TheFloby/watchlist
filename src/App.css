@@ -1164,7 +1164,7 @@
   border-radius: 8px;
   padding: 10px 12px;
   color: var(--cream);
-  font-size: 14px;
+  font-size: 16px;
   font-family: inherit;
   resize: vertical;
 }
@@ -1356,7 +1356,7 @@
   border-radius: 8px;
   padding: 12px 14px;
   color: var(--cream);
-  font-size: 14px;
+  font-size: 16px;
   font-family: inherit;
   resize: vertical;
 }
