@@ -4,19 +4,21 @@ Site perso pour Thomas et Flo : propositions, validations croisées, suivi des s
 
 ## Nouveautés de cette mise à jour
 
-- **Fix du tri** : les tris par date, note TMDB et notre note ne fonctionnaient quasiment pas pour les anciens titres (pas encore de `release_year`/`tmdb_vote_average` enregistrés). Le cron quotidien va maintenant rattraper automatiquement ces infos pour tous les titres existants, en plus de sa vérification habituelle des saisons.
-- **Tri inversible** : un bouton (flèche ↓/↑) apparaît à côté du menu de tri pour les options qui ont un sens logique (alphabétique, date, notes) — clique pour inverser l'ordre.
-- **Priorité "nouvelle saison" retirée des autres tris** : elle ne s'applique plus que sur le tri "par défaut" dans Terminé. Les autres tris (alphabétique, date, etc.) suivent maintenant exactement l'ordre demandé, sans exception.
-- Les titres sans valeur pour le tri choisi (pas d'année, pas de note) restent toujours en bas, quel que soit le sens du tri.
+- **Films pas encore sortis en salle** : si tu proposes un film dont la sortie est dans le futur (ou pas encore annoncée), le bouton "On commence" est remplacé par un texte informatif — "En salle le JJ/MM/AA" si la date est connue, "En salle prochainement" sinon. Dès que la date est passée, ça redevient cliquable normalement.
 
-Aucune nouvelle migration SQL pour cette mise à jour (les colonnes existent déjà depuis `migration_6.sql`). Pas de nouveau réglage Vercel.
+Une nouvelle migration SQL est nécessaire (1 nouvelle colonne `release_date` sur `titles`). Pas de nouveau réglage Vercel.
 
-## 1. Mettre à jour le code (GitHub)
+## 1. Mettre à jour la base de données (Supabase)
+
+1. Dans Supabase → **SQL Editor** → **New query**.
+2. Copie-colle le contenu de `sql/migration_7.sql`, clique **Run**.
+
+## 2. Mettre à jour le code (GitHub)
 
 ```powershell
 cd C:\Users\flori\OneDrive\Projets\watchlist
 git add .
-git commit -m "Fix tri date note et priorite nouvelle saison"
+git commit -m "Films pas encore sortis en salle"
 git push
 ```
 
@@ -50,7 +52,7 @@ Propositions ──valide──→ À voir ──"On commence"──→ En cours
   - Si une nouvelle saison est déjà **sortie**, un badge vert "Nouvelle saison" apparaît et un bouton "Voir la nouvelle saison" envoie la série dans À voir, à la bonne saison.
   - Si une prochaine saison est **annoncée mais pas encore diffusée**, un badge neutre "Saison X le JJ/MM" s'affiche à titre informatif (pas de bouton, rien à faire pour l'instant). Il se transforme automatiquement en badge vert le jour où la saison sort vraiment.
   - Ça ne s'applique pas aux séries dans Jamais fini — celles-là restent gérées à la main.
-- **Films** : pas de gestion de saisons, juste À voir → En cours → Terminé.
+- **Films** : pas de gestion de saisons, juste À voir → En cours → Terminé. Si le film n'est pas encore sorti en salle (date dans le futur, ou pas encore annoncée), le bouton "On commence" est remplacé par un texte informatif tant que la sortie n'a pas eu lieu.
 - **Mangas** : pas de saisons par défaut, sauf si le manga a été trouvé via la recherche TMDB (son adaptation animée) — dans ce cas il a aussi un menu de saisons et profite de la détection automatique, comme une vraie série.
 - **Confirmation** : chaque bouton d'action affiche une popup "Es-tu sûr ?" avant d'appliquer le changement.
 - **Recherche** : un champ de recherche par nom est disponible sur tous les onglets, filtre en temps réel.
@@ -77,7 +79,8 @@ series-tracker/
 │   ├── migration_3.sql        → mise à jour n°3 (date de saison annoncée)
 │   ├── migration_4.sql        → mise à jour n°4 (notes et avis, version 1 note)
 │   ├── migration_5.sql        → mise à jour n°5 (3 critères de notation)
-│   └── migration_6.sql        → mise à jour n°6 (colonnes de tri)
+│   ├── migration_6.sql        → mise à jour n°6 (colonnes de tri)
+│   └── migration_7.sql        → mise à jour n°7 (films pas encore sortis)
 ├── public/
 │   ├── logo.png               → logo TFCU complet (header, écran de connexion, favicon)
 │   ├── pwa-192.png, pwa-512.png → icônes d'installation app
@@ -91,6 +94,7 @@ series-tracker/
 │   ├── config.js              → ta clé API TMDB (côté site)
 │   ├── tmdb.js                → recherche + détails enrichis (synopsis, casting...)
 │   ├── seasonUtils.js         → calculs partagés : saisons en retard, moyenne pondérée
+│   ├── ConfirmContext.jsx     → système global de popup de confirmation (remplace confirm() natif)
 │   ├── App.jsx                → page principale (sidebar + onglets + menu Notes)
 │   ├── App.css                → tous les styles visuels
 │   ├── index.css              → styles globaux, palette de couleurs

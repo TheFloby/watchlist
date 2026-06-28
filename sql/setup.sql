@@ -51,6 +51,11 @@ create table if not exists titles (
   tmdb_vote_average numeric(3,1),
   release_year int,
 
+  -- Date de sortie complète (JJ/MM/AAAA), utilisée pour les FILMS uniquement :
+  -- si elle est dans le futur (ou absente), le film n'est pas encore sorti en salle,
+  -- et le bouton "On commence" est remplacé par un texte informatif non cliquable.
+  release_date date,
+
   -- Qui a ajouté/proposé ce titre
   added_by uuid references auth.users(id) on delete set null,
   added_by_email text,

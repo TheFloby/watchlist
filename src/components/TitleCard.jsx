@@ -29,6 +29,16 @@ function formatShortDate(isoDate) {
   return `${day}/${month}/${year.slice(-2)}`
 }
 
+// Un FILM n'est pas encore sorti en salle si sa date de sortie est dans le futur,
+// ou si elle n'est pas encore connue du tout. Uniquement pour les films : les
+// séries/mangas gèrent ça saison par saison, pas avec une seule date globale.
+function isUnreleasedMovie(title) {
+  if (title.type !== 'film') return false
+  if (!title.release_date) return true
+  const today = new Date().toISOString().slice(0, 10)
+  return title.release_date > today
+}
+
 export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, readOnly = false, alreadyRated = false }) {
   const [busy, setBusy] = useState(false)
   const confirmAction = useConfirm()
@@ -152,18 +162,26 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
               )
             )}
 
-            {/* --- À VOIR : on commence --- */}
+            {/* --- À VOIR : on commence (sauf film pas encore sorti en salle) --- */}
             {title.status === 'a_voir' && (
-              <button
-                className="btn btn-action"
-                disabled={busy}
-                onClick={() => confirmAndUpdate(
-                  `Prêt à lancer « ${title.name} » ?`,
-                  { status: 'en_cours', current_season: hasSeasons(title) ? (title.current_season || 1) : null }
-                )}
-              >
-                On commence
-              </button>
+              isUnreleasedMovie(title) ? (
+                <p className="title-card-not-released">
+                  {title.release_date
+                    ? `En salle le ${formatShortDate(title.release_date)}`
+                    : 'En salle prochainement'}
+                </p>
+              ) : (
+                <button
+                  className="btn btn-action"
+                  disabled={busy}
+                  onClick={() => confirmAndUpdate(
+                    `Prêt à lancer « ${title.name} » ?`,
+                    { status: 'en_cours', current_season: hasSeasons(title) ? (title.current_season || 1) : null }
+                  )}
+                >
+                  On commence
+                </button>
+              )
             )}
 
             {/* --- EN COURS : menu saison (si applicable) + terminé/abandonner --- */}

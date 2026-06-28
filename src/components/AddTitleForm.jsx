@@ -33,6 +33,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
   const [tmdbId, setTmdbId] = useState(null)
   const [voteAverage, setVoteAverage] = useState(null)
   const [releaseYear, setReleaseYear] = useState(null)
+  const [releaseDate, setReleaseDate] = useState(null)
   const [manualMode, setManualMode] = useState(false)
   const [directStatus, setDirectStatus] = useState('vu')
   const [currentSeason, setCurrentSeason] = useState(1)
@@ -79,6 +80,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
     setTmdbId(result.tmdbType === 'serie' ? result.tmdbId : null)
     setVoteAverage(result.voteAverage || null)
     setReleaseYear(result.year ? parseInt(result.year) : null)
+    setReleaseDate(result.releaseDate || null)
 
     // Pour les séries, on va chercher le nombre de saisons en arrière-plan
     if (result.tmdbType === 'serie' && result.tmdbId) {
@@ -95,6 +97,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
     setTmdbId(null)
     setVoteAverage(null)
     setReleaseYear(null)
+    setReleaseDate(null)
   }
 
   async function handleSubmit(e) {
@@ -128,6 +131,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
       tmdb_id: tmdbId || null,
       tmdb_vote_average: voteAverage || null,
       release_year: releaseYear || null,
+      release_date: releaseDate || null,
       has_been_in_progress: finalStatus === 'en_cours' || finalStatus === 'vu',
       added_by: user.id,
       added_by_email: user.email,

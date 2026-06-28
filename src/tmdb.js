@@ -26,6 +26,7 @@ export async function searchTitles(query) {
         tmdbId: r.id,
         name: isMovie ? r.title : r.name,
         year: date ? date.slice(0, 4) : null,
+        releaseDate: date || null,
         image_url: r.poster_path ? `${IMAGE_BASE}${r.poster_path}` : null,
         tmdbType: isMovie ? 'film' : 'serie',
         voteAverage: r.vote_average ? Math.round(r.vote_average * 10) / 10 : null,

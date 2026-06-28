@@ -100,7 +100,7 @@ export default async function handler(req, res) {
   //   cette fonctionnalité, ou via le mode manuel) — pour eux, on va tenter de le retrouver
   //   par une recherche sur le nom un peu plus bas. Les mangas sans tmdb_id ne sont pas
   //   inclus ici : pas de correspondance fiable possible (manga papier, pas d'adaptation).
-  const selectFields = 'id, name, status, type, tmdb_id, total_seasons, current_season, new_season_available, upcoming_season_date, upcoming_season_number, tmdb_vote_average, release_year'
+  const selectFields = 'id, name, status, type, tmdb_id, total_seasons, current_season, new_season_available, upcoming_season_date, upcoming_season_number, tmdb_vote_average, release_year, release_date'
 
   const { data: withTmdbId, error: errorA } = await supabase
     .from('titles')
@@ -143,14 +143,16 @@ export default async function handler(req, res) {
     const fields = {}
     let resultStatus = 'pas de changement'
 
-    // Rattrapage : si la note TMDB ou l'année de sortie manquent encore (titres ajoutés
-    // avant l'introduction du système de tri), on va les chercher une fois pour toutes.
-    if (title.tmdb_vote_average == null || title.release_year == null) {
+    // Rattrapage : si la note TMDB, l'année ou la date de sortie manquent encore (titres
+    // ajoutés avant l'introduction du système de tri / des films pas encore sortis),
+    // on va les chercher une fois pour toutes.
+    if (title.tmdb_vote_average == null || title.release_year == null || (title.type === 'film' && title.release_date == null)) {
       const basics = await fetchBasicInfo(tmdbId, TMDB_API_KEY, title.type === 'film')
       if (basics) {
         if (title.tmdb_vote_average == null && basics.voteAverage != null) fields.tmdb_vote_average = basics.voteAverage
         if (title.release_year == null && basics.year != null) fields.release_year = basics.year
-        if (Object.keys(fields).length > 0) resultStatus = 'note/année rattrapées'
+        if (title.type === 'film' && title.release_date == null && basics.releaseDate != null) fields.release_date = basics.releaseDate
+        if (Object.keys(fields).length > 0) resultStatus = 'note/année/date rattrapées'
       }
     }
 
@@ -219,8 +221,9 @@ export default async function handler(req, res) {
   return res.status(200).json({ checked: titles.length, results })
 }
 
-// Récupère la note moyenne TMDB et l'année de sortie d'un titre. Utilisé pour rattraper
-// les titres ajoutés avant l'introduction du système de tri (qui n'avaient pas ces infos).
+// Récupère la note moyenne TMDB, l'année et la date complète de sortie d'un titre.
+// Utilisé pour rattraper les titres ajoutés avant l'introduction du système de tri /
+// de la vérification des films pas encore sortis (qui n'avaient pas ces infos).
 async function fetchBasicInfo(tmdbId, apiKey, isMovie) {
   try {
     const endpoint = isMovie ? 'movie' : 'tv'
@@ -232,6 +235,7 @@ async function fetchBasicInfo(tmdbId, apiKey, isMovie) {
     return {
       voteAverage: data.vote_average ? Math.round(data.vote_average * 10) / 10 : null,
       year: date ? parseInt(date.slice(0, 4)) : null,
+      releaseDate: date || null,
     }
   } catch {
     return null
