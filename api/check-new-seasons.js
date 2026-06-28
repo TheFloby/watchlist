@@ -96,27 +96,28 @@ export default async function handler(req, res) {
   // On récupère :
   // - tous les titres qui ont déjà un tmdb_id enregistré (peu importe leur type affiché,
   //   y compris "Manga" si l'oeuvre a été trouvée via TMDB puis reclassée) ;
-  // - ET les séries/séries animées qui n'ont pas encore de tmdb_id (ajoutées avant cette
-  //   fonctionnalité, ou via le mode manuel) — pour elles, on va tenter de le retrouver
-  //   par une recherche sur le nom un peu plus bas.
-  const selectFields = 'id, name, status, type, tmdb_id, total_seasons, current_season, new_season_available, upcoming_season_date, upcoming_season_number'
+  // - ET les séries/séries animées/films qui n'ont pas encore de tmdb_id (ajoutées avant
+  //   cette fonctionnalité, ou via le mode manuel) — pour eux, on va tenter de le retrouver
+  //   par une recherche sur le nom un peu plus bas. Les mangas sans tmdb_id ne sont pas
+  //   inclus ici : pas de correspondance fiable possible (manga papier, pas d'adaptation).
+  const selectFields = 'id, name, status, type, tmdb_id, total_seasons, current_season, new_season_available, upcoming_season_date, upcoming_season_number, tmdb_vote_average, release_year'
 
   const { data: withTmdbId, error: errorA } = await supabase
     .from('titles')
     .select(selectFields)
     .not('tmdb_id', 'is', null)
 
-  const { data: seriesWithoutTmdbId, error: errorB } = await supabase
+  const { data: withoutTmdbId, error: errorB } = await supabase
     .from('titles')
     .select(selectFields)
     .is('tmdb_id', null)
-    .in('type', ['serie', 'serie_animee'])
+    .in('type', ['serie', 'serie_animee', 'film'])
 
   if (errorA || errorB) {
     return res.status(500).json({ error: (errorA || errorB).message })
   }
 
-  const titles = [...withTmdbId, ...seriesWithoutTmdbId]
+  const titles = [...withTmdbId, ...withoutTmdbId]
 
   const results = []
 
@@ -126,7 +127,9 @@ export default async function handler(req, res) {
     let tmdbId = title.tmdb_id
 
     if (!tmdbId) {
-      tmdbId = await findTmdbIdByName(title.name, TMDB_API_KEY)
+      tmdbId = title.type === 'film'
+        ? await findTmdbIdByName(title.name, TMDB_API_KEY, 'movie')
+        : await findTmdbIdByName(title.name, TMDB_API_KEY, 'tv')
       if (tmdbId) {
         await supabase.from('titles').update({ tmdb_id: tmdbId }).eq('id', title.id)
       }
@@ -137,16 +140,40 @@ export default async function handler(req, res) {
       continue
     }
 
+    const fields = {}
+    let resultStatus = 'pas de changement'
+
+    // Rattrapage : si la note TMDB ou l'année de sortie manquent encore (titres ajoutés
+    // avant l'introduction du système de tri), on va les chercher une fois pour toutes.
+    if (title.tmdb_vote_average == null || title.release_year == null) {
+      const basics = await fetchBasicInfo(tmdbId, TMDB_API_KEY, title.type === 'film')
+      if (basics) {
+        if (title.tmdb_vote_average == null && basics.voteAverage != null) fields.tmdb_vote_average = basics.voteAverage
+        if (title.release_year == null && basics.year != null) fields.release_year = basics.year
+        if (Object.keys(fields).length > 0) resultStatus = 'note/année rattrapées'
+      }
+    }
+
+    // Les films n'ont pas de saisons : on s'arrête ici pour eux une fois la note/année traitée.
+    if (title.type === 'film') {
+      if (Object.keys(fields).length > 0) {
+        await supabase.from('titles').update(fields).eq('id', title.id)
+      }
+      results.push({ name: title.name, status: resultStatus })
+      continue
+    }
+
     const seasonInfo = await fetchSeasonInfo(tmdbId, TMDB_API_KEY, today)
 
     if (!seasonInfo) {
-      results.push({ name: title.name, status: 'infos TMDB introuvables' })
+      if (Object.keys(fields).length > 0) {
+        await supabase.from('titles').update(fields).eq('id', title.id)
+      }
+      results.push({ name: title.name, status: Object.keys(fields).length > 0 ? resultStatus : 'infos TMDB introuvables' })
       continue
     }
 
     const { airedSeasonsCount, nextAnnounced } = seasonInfo
-    const fields = {}
-    let resultStatus = 'pas de changement'
 
     // Une prochaine saison est annoncée avec une date dans le futur : on l'enregistre
     // pour affichage informatif, sans toucher total_seasons (elle n'est pas sortie).
@@ -192,6 +219,25 @@ export default async function handler(req, res) {
   return res.status(200).json({ checked: titles.length, results })
 }
 
+// Récupère la note moyenne TMDB et l'année de sortie d'un titre. Utilisé pour rattraper
+// les titres ajoutés avant l'introduction du système de tri (qui n'avaient pas ces infos).
+async function fetchBasicInfo(tmdbId, apiKey, isMovie) {
+  try {
+    const endpoint = isMovie ? 'movie' : 'tv'
+    const url = `https://api.themoviedb.org/3/${endpoint}/${tmdbId}?api_key=${apiKey}&language=fr-FR`
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json()
+    const date = isMovie ? data.release_date : data.first_air_date
+    return {
+      voteAverage: data.vote_average ? Math.round(data.vote_average * 10) / 10 : null,
+      year: date ? parseInt(date.slice(0, 4)) : null,
+    }
+  } catch {
+    return null
+  }
+}
+
 // Récupère le détail des saisons d'une série sur TMDB, et distingue :
 // - airedSeasonsCount : nombre de saisons dont la date de sortie est déjà passée
 // - nextAnnounced : la prochaine saison connue mais dont la date de sortie est dans le futur
@@ -223,9 +269,9 @@ async function fetchSeasonInfo(tmdbId, apiKey, today) {
   }
 }
 
-async function findTmdbIdByName(name, apiKey) {
+async function findTmdbIdByName(name, apiKey, mediaType = 'tv') {
   try {
-    const url = `https://api.themoviedb.org/3/search/tv?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(name)}`
+    const url = `https://api.themoviedb.org/3/search/${mediaType}?api_key=${apiKey}&language=fr-FR&query=${encodeURIComponent(name)}`
     const res = await fetch(url)
     if (!res.ok) return null
     const data = await res.json()

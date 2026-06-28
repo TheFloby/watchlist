@@ -49,6 +49,7 @@ export default function App() {
   const [hasUnsavedRating, setHasUnsavedRating] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState(null)
   const [sortOption, setSortOption] = useState('default')
+  const [sortDirection, setSortDirection] = useState('desc')
   const [averageRatingByTitle, setAverageRatingByTitle] = useState({})
   const ratingPageRef = useRef(null)
 
@@ -120,8 +121,10 @@ export default function App() {
   const pseudo = emailToPseudo(session.user.email)
   const avatar = avatarForEmail(session.user.email)
 
-  // Dans l'onglet Terminé : 0 = nouvelle saison disponible (le plus prioritaire),
-  // 1 = saison annoncée mais pas encore sortie, 2 = rien de particulier.
+  // Dans l'onglet Terminé, uniquement pour le tri "par défaut" : 0 = nouvelle saison
+  // disponible (le plus prioritaire), 1 = saison annoncée mais pas encore sortie,
+  // 2 = rien de particulier. Les autres tris (alpha, date, note...) ignorent cette
+  // priorité — l'utilisateur a explicitement demandé un autre ordre.
   function seasonPriority(t) {
     if (hasUnwatchedSeason(t)) return 0
     if (t.upcoming_season_date) return 1
@@ -130,18 +133,40 @@ export default function App() {
 
   const TYPE_ORDER = { serie: 0, serie_animee: 1, film: 2, manga: 3 }
 
+  // Place toujours les titres sans valeur (null/undefined) en bas, peu importe le
+  // sens du tri demandé — sinon ils remonteraient artificiellement en "ascendant".
+  function compareWithNullsLast(aVal, bVal, direction) {
+    const aMissing = aVal === null || aVal === undefined
+    const bMissing = bVal === null || bVal === undefined
+    if (aMissing && bMissing) return 0
+    if (aMissing) return 1
+    if (bMissing) return -1
+    return direction === 'desc' ? bVal - aVal : aVal - bVal
+  }
+
   function applySortOption(list) {
+    if (sortOption === 'default') {
+      // Seul ce tri applique la priorité "nouvelle saison" dans Terminé ; sinon,
+      // ordre d'ajout tel que renvoyé par la base (déjà trié par created_at desc).
+      if (activeTab === 'vu') {
+        return [...list].sort((a, b) => seasonPriority(a) - seasonPriority(b))
+      }
+      return list
+    }
+
     switch (sortOption) {
       case 'alpha':
-        return [...list].sort((a, b) => a.name.localeCompare(b.name))
+        return [...list].sort((a, b) =>
+          sortDirection === 'desc' ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name)
+        )
       case 'release_year':
-        return [...list].sort((a, b) => (b.release_year || 0) - (a.release_year || 0))
+        return [...list].sort((a, b) => compareWithNullsLast(a.release_year, b.release_year, sortDirection))
       case 'type':
         return [...list].sort((a, b) => (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9))
       case 'tmdb_rating':
-        return [...list].sort((a, b) => (b.tmdb_vote_average || -1) - (a.tmdb_vote_average || -1))
+        return [...list].sort((a, b) => compareWithNullsLast(a.tmdb_vote_average, b.tmdb_vote_average, sortDirection))
       case 'our_rating':
-        return [...list].sort((a, b) => (averageRatingByTitle[b.id] || -1) - (averageRatingByTitle[a.id] || -1))
+        return [...list].sort((a, b) => compareWithNullsLast(averageRatingByTitle[a.id], averageRatingByTitle[b.id], sortDirection))
       default:
         return list
     }
@@ -161,15 +186,11 @@ export default function App() {
       if (searchQuery.trim() && !t.name.toLowerCase().includes(searchQuery.trim().toLowerCase())) return false
       return true
     })
-  ).sort((a, b) => {
-    // La priorité "nouvelle saison" dans Terminé reste toujours appliquée en premier,
-    // par-dessus le tri choisi, pour ne jamais perdre cette info importante.
-    if (activeTab === 'vu') {
-      const diff = seasonPriority(a) - seasonPriority(b)
-      if (diff !== 0) return diff
-    }
-    return 0
-  })
+  )
+
+  // Les tris qui acceptent un sens (alpha, date, note) ont un bouton dédié pour
+  // inverser l'ordre, à côté du menu déroulant.
+  const REVERSIBLE_SORTS = new Set(['alpha', 'release_year', 'tmdb_rating', 'our_rating'])
 
   const currentTab = activeTab === 'notes'
     ? {
@@ -401,17 +422,30 @@ export default function App() {
               </select>
               <select
                 value={sortOption}
-                onChange={(e) => setSortOption(e.target.value)}
+                onChange={(e) => {
+                  setSortOption(e.target.value)
+                  setSortDirection('desc')
+                }}
                 className="status-select"
                 aria-label="Trier"
               >
                 <option value="default">Tri par défaut</option>
-                <option value="alpha">Alphabétique (A-Z)</option>
+                <option value="alpha">Alphabétique</option>
                 <option value="release_year">Date de sortie</option>
                 <option value="type">Type</option>
                 <option value="tmdb_rating">Note TMDB</option>
                 <option value="our_rating">Notre note</option>
               </select>
+              {REVERSIBLE_SORTS.has(sortOption) && (
+                <button
+                  className="icon-btn sort-direction-btn"
+                  onClick={() => setSortDirection((d) => (d === 'desc' ? 'asc' : 'desc'))}
+                  aria-label="Inverser l'ordre du tri"
+                  title="Inverser l'ordre"
+                >
+                  {sortDirection === 'desc' ? '↓' : '↑'}
+                </button>
+              )}
             </div>
           </header>
 

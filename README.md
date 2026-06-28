@@ -4,22 +4,19 @@ Site perso pour Thomas et Flo : propositions, validations croisées, suivi des s
 
 ## Nouveautés de cette mise à jour
 
-- **Système de tri** : un nouveau menu déroulant apparaît à côté de "Tous les types", avec 6 options — tri par défaut, alphabétique, date de sortie, type, note TMDB, et votre note moyenne (Thomas + Flo combinés). Les titres non notés ou sans info TMDB restent en bas du tri concerné.
-- **Toutes les popups de confirmation harmonisées** : remplacé les `confirm()` natifs du navigateur par le même style de popup partout (Valider, Refuser, Terminé, Abandonner, Reprendre, Supprimer, etc.), avec des messages plus personnalisés selon l'action.
+- **Fix du tri** : les tris par date, note TMDB et notre note ne fonctionnaient quasiment pas pour les anciens titres (pas encore de `release_year`/`tmdb_vote_average` enregistrés). Le cron quotidien va maintenant rattraper automatiquement ces infos pour tous les titres existants, en plus de sa vérification habituelle des saisons.
+- **Tri inversible** : un bouton (flèche ↓/↑) apparaît à côté du menu de tri pour les options qui ont un sens logique (alphabétique, date, notes) — clique pour inverser l'ordre.
+- **Priorité "nouvelle saison" retirée des autres tris** : elle ne s'applique plus que sur le tri "par défaut" dans Terminé. Les autres tris (alphabétique, date, etc.) suivent maintenant exactement l'ordre demandé, sans exception.
+- Les titres sans valeur pour le tri choisi (pas d'année, pas de note) restent toujours en bas, quel que soit le sens du tri.
 
-Une nouvelle migration SQL est nécessaire (2 nouvelles colonnes sur `titles` pour le tri). Pas de nouveau réglage Vercel.
+Aucune nouvelle migration SQL pour cette mise à jour (les colonnes existent déjà depuis `migration_6.sql`). Pas de nouveau réglage Vercel.
 
-## 1. Mettre à jour la base de données (Supabase)
-
-1. Dans Supabase → **SQL Editor** → **New query**.
-2. Copie-colle le contenu de `sql/migration_6.sql`, clique **Run**.
-
-## 2. Mettre à jour le code (GitHub)
+## 1. Mettre à jour le code (GitHub)
 
 ```powershell
 cd C:\Users\flori\OneDrive\Projets\watchlist
 git add .
-git commit -m "Systeme de tri et popups personnalisees"
+git commit -m "Fix tri date note et priorite nouvelle saison"
 git push
 ```
 
@@ -60,7 +57,7 @@ Propositions ──valide──→ À voir ──"On commence"──→ En cours
 - **Notes** : menu dédié dans la sidebar, séparé des 6 onglets de statut. Contient tous les titres déjà passés par "En cours" au moins une fois. "À noter" (pas encore noté par toi) et "Déjà noté" (modifiable à tout moment) — c'est individuel à chaque compte. Les cartes y sont en lecture pure : pas de gestion de statut, juste un bouton "Noter".
 - **Fiche détaillée** : clique sur l'affiche ou le titre d'une carte, dans n'importe quel onglet, pour ouvrir la fiche avec les infos TMDB et les avis de chacun. Ta propre note s'y affiche en lecture seule, avec un lien pour aller la modifier sur la page dédiée.
 - **Notation à 3 critères** : Ressenti général, Scénario, Personnages, chacun sur 10 avec demi-étoiles, plus un commentaire global. Le ressenti général compte double dans la moyenne affichée partout ailleurs.
-- **Tri** : menu déroulant à côté du filtre de type — par défaut (ordre d'ajout), alphabétique, date de sortie, type, note TMDB, ou votre note moyenne. S'applique à tous les onglets. Dans Terminé, les séries avec une nouvelle saison restent toujours en haut, quel que soit le tri choisi.
+- **Tri** : menu déroulant à côté du filtre de type — par défaut (ordre d'ajout), alphabétique, date de sortie, type, note TMDB, ou votre note moyenne. S'applique à tous les onglets. Pour les tris alphabétique, date et notes, un bouton ↓/↑ à côté permet d'inverser l'ordre. Dans Terminé, les séries avec une nouvelle saison restent en haut uniquement pour le tri "par défaut" — les autres tris suivent l'ordre demandé sans exception. Les titres sans valeur connue pour le critère choisi (pas d'année, pas de note) restent toujours en bas. Le cron quotidien complète automatiquement la note TMDB et l'année de sortie pour les titres qui n'en ont pas encore.
 
 ## Pour faire des modifications plus tard
 
