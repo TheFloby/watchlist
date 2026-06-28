@@ -212,11 +212,21 @@ export default function App() {
     setPendingNavigation(() => action)
   }
 
+  // Réinitialise le filtre de type et le tri à chaque vrai changement de vue
+  // (changement d'onglet, de sous-onglet Notes...) — un filtre actif depuis un
+  // autre onglet n'a pas de raison de persister silencieusement ailleurs.
+  function resetFilters() {
+    setTypeFilter('all')
+    setSortOption('default')
+    setSortDirection('desc')
+  }
+
   function selectTab(key) {
     guardedNavigate(() => {
       setRatingPageTitleId(null)
       setActiveTab(key)
       setSidebarOpen(false)
+      resetFilters()
       try {
         localStorage.setItem('watchlist_active_tab', key)
       } catch {
@@ -233,6 +243,7 @@ export default function App() {
     guardedNavigate(() => {
       setRatingPageTitleId(null)
       setActiveTab('notes')
+      resetFilters()
       try {
         localStorage.setItem('watchlist_active_tab', 'notes')
       } catch {
@@ -246,6 +257,7 @@ export default function App() {
   function selectNotesSubTab(sub) {
     setNotesSubTab(sub)
     setSidebarOpen(false)
+    resetFilters()
   }
 
   // Les 3 choix possibles de la popup "modifications non enregistrées" :
@@ -277,6 +289,7 @@ export default function App() {
       setRatingPageTitleId(titleId)
       setNotesSubTab(ratingsByTitle[titleId] ? 'deja_note' : 'a_noter')
       setActiveTab('notes')
+      resetFilters()
       try {
         localStorage.setItem('watchlist_active_tab', 'notes')
       } catch {
@@ -398,8 +411,8 @@ export default function App() {
       ) : (
         <main className="main-content">
           <header className="content-header">
-            <h1>{currentTab.label}</h1>
-            <div className="content-header-filters">
+            <div className="content-header-top">
+              <h1>{currentTab.label}</h1>
               <input
                 type="search"
                 value={searchQuery}
@@ -408,6 +421,8 @@ export default function App() {
                 className="search-input"
                 aria-label="Rechercher un titre"
               />
+            </div>
+            <div className="content-header-filters">
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}

@@ -488,6 +488,14 @@
   flex-wrap: wrap;
 }
 
+.content-header-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
 .content-header h1 {
   font-family: var(--font-display);
   font-size: 26px;
@@ -516,7 +524,9 @@
   padding: 8px 12px;
   color: var(--cream);
   font-size: 13px;
-  width: 200px;
+  width: 100%;
+  max-width: 220px;
+  margin-left: auto;
   transition: border-color 0.15s ease;
 }
 
@@ -1443,14 +1453,26 @@
     font-size: 22px;
   }
 
+  .content-header-top {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .content-header-filters {
     width: 100%;
   }
 
-  .search-input {
+  .content-header-filters .status-select {
     flex: 1;
     min-width: 0;
+  }
+
+  .search-input {
+    flex: 0 1 130px;
+    min-width: 0;
     width: auto;
+    max-width: 150px;
+    margin-left: 0;
     font-size: 16px;
   }
 
