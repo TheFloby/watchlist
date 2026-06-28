@@ -253,11 +253,16 @@ export default function App() {
   }
 
   // Choix du sous-onglet Notes : ferme le tiroir mobile cette fois, puisque c'est
-  // le vrai point de destination.
+  // le vrai point de destination. Protégé par guardedNavigate, comme selectTab :
+  // si on est en train de noter avec des changements non enregistrés, on demande
+  // confirmation avant de quitter la page de notation pour revenir à la grille.
   function selectNotesSubTab(sub) {
-    setNotesSubTab(sub)
-    setSidebarOpen(false)
-    resetFilters()
+    guardedNavigate(() => {
+      setRatingPageTitleId(null)
+      setNotesSubTab(sub)
+      setSidebarOpen(false)
+      resetFilters()
+    })
   }
 
   // Les 3 choix possibles de la popup "modifications non enregistrées" :
