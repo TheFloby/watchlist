@@ -1468,10 +1468,10 @@
   }
 
   .search-input {
-    flex: 0 1 130px;
+    flex: 1 1 auto;
     min-width: 0;
     width: auto;
-    max-width: 150px;
+    max-width: none;
     margin-left: 0;
     font-size: 16px;
   }
