@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
 import AddTitleForm from './components/AddTitleForm'
@@ -46,6 +46,9 @@ export default function App() {
   const [ratingsByTitle, setRatingsByTitle] = useState({})
   const [openTitleId, setOpenTitleId] = useState(null)
   const [ratingPageTitleId, setRatingPageTitleId] = useState(null)
+  const [hasUnsavedRating, setHasUnsavedRating] = useState(false)
+  const [pendingNavigation, setPendingNavigation] = useState(null)
+  const ratingPageRef = useRef(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -135,15 +138,66 @@ export default function App() {
       }
     : TABS.find((t) => t.key === activeTab)
 
-  function selectTab(key) {
-    setActiveTab(key)
-    setSidebarOpen(false)
-    try {
-      localStorage.setItem('watchlist_active_tab', key)
-    } catch {
-      // Si le navigateur bloque localStorage (mode privé strict, etc.), on continue
-      // sans bloquer l'app — la persistance ne fonctionnera juste pas cette fois.
+  // Quand on essaie de naviguer ailleurs (changer d'onglet, ouvrir une fiche...) alors
+  // qu'il y a des modifications non enregistrées sur la page de notation, on stocke
+  // l'action de navigation en attente, et on affiche une popup avec 3 choix.
+  function guardedNavigate(action) {
+    if (!hasUnsavedRating) {
+      action()
+      return
     }
+    setPendingNavigation(() => action)
+  }
+
+  function selectTab(key) {
+    guardedNavigate(() => {
+      setActiveTab(key)
+      setSidebarOpen(false)
+      try {
+        localStorage.setItem('watchlist_active_tab', key)
+      } catch {
+        // Si le navigateur bloque localStorage (mode privé strict, etc.), on continue
+        // sans bloquer l'app — la persistance ne fonctionnera juste pas cette fois.
+      }
+    })
+  }
+
+  // Les 3 choix possibles de la popup "modifications non enregistrées" :
+  async function handleSaveAndLeave() {
+    const ok = await ratingPageRef.current?.save()
+    if (ok) {
+      pendingNavigation?.()
+    }
+    setPendingNavigation(null)
+  }
+
+  function handleLeaveWithoutSaving() {
+    setHasUnsavedRating(false)
+    pendingNavigation?.()
+    setPendingNavigation(null)
+  }
+
+  function handleCancelNavigation() {
+    setPendingNavigation(null)
+  }
+
+  // Ouvre la page de notation pour un titre, et bascule le menu sur Notes
+  // (avec le bon sous-onglet) pour que la sidebar reste cohérente avec ce qu'on regarde,
+  // peu importe l'onglet depuis lequel on arrive. Protégé par guardedNavigate : si on est
+  // déjà en train de noter autre chose avec des modifications en attente, on demande
+  // confirmation avant de changer de titre.
+  function openRatingPage(titleId) {
+    guardedNavigate(() => {
+      setRatingPageTitleId(titleId)
+      setNotesSubTab(ratingsByTitle[titleId] ? 'deja_note' : 'a_noter')
+      setActiveTab('notes')
+      setSidebarOpen(false)
+      try {
+        localStorage.setItem('watchlist_active_tab', 'notes')
+      } catch {
+        // Pas grave si le navigateur bloque localStorage.
+      }
+    })
   }
 
   return (
@@ -249,10 +303,12 @@ export default function App() {
       {/* Contenu principal */}
       {ratingPageTitleId && titles.find((t) => t.id === ratingPageTitleId) ? (
         <RatingPage
+          ref={ratingPageRef}
           title={titles.find((t) => t.id === ratingPageTitleId)}
           currentUserEmail={session.user.email}
-          onBack={() => setRatingPageTitleId(null)}
+          onBack={() => guardedNavigate(() => setRatingPageTitleId(null))}
           onSaved={() => fetchMyRatings(session.user.email)}
+          onDirtyChange={setHasUnsavedRating}
         />
       ) : (
         <main className="main-content">
@@ -297,7 +353,7 @@ export default function App() {
                     title={title}
                     currentUserEmail={session.user.email}
                     onChanged={() => { fetchTitles(); fetchMyRatings(session.user.email) }}
-                    onOpen={() => activeTab === 'notes' ? setRatingPageTitleId(title.id) : setOpenTitleId(title.id)}
+                    onOpen={() => activeTab === 'notes' ? openRatingPage(title.id) : setOpenTitleId(title.id)}
                     readOnly={activeTab === 'notes'}
                     alreadyRated={Boolean(ratingsByTitle[title.id])}
                   />
@@ -328,9 +384,23 @@ export default function App() {
           onChanged={() => fetchMyRatings(session.user.email)}
           onRate={() => {
             setOpenTitleId(null)
-            setRatingPageTitleId(openTitleId)
+            openRatingPage(openTitleId)
           }}
         />
+      )}
+
+      {pendingNavigation && (
+        <div className="modal-overlay" onClick={handleCancelNavigation}>
+          <div className="confirm-leave-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Modifications non enregistrées</h2>
+            <p>Tu as des changements non enregistrés sur cette note. Que veux-tu faire ?</p>
+            <div className="confirm-leave-actions">
+              <button className="btn btn-primary" onClick={handleSaveAndLeave}>Enregistrer et quitter</button>
+              <button className="btn btn-abandon" onClick={handleLeaveWithoutSaving}>Quitter sans enregistrer</button>
+              <button className="btn btn-ghost" onClick={handleCancelNavigation}>Rester sur la page</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

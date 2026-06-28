@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { supabase } from '../supabaseClient'
 
 const TYPE_LABELS = {
@@ -45,12 +45,18 @@ function StarRatingLarge({ value, onChange }) {
   )
 }
 
-export default function RatingPage({ title, currentUserEmail, onBack, onSaved }) {
-  const [scores, setScores] = useState({ score_general: 0, score_scenario: 0, score_personnages: 0 })
+const EMPTY_SCORES = { score_general: 0, score_scenario: 0, score_personnages: 0 }
+
+const RatingPage = forwardRef(function RatingPage(
+  { title, currentUserEmail, onBack, onSaved, onDirtyChange },
+  ref
+) {
+  const [scores, setScores] = useState(EMPTY_SCORES)
   const [comment, setComment] = useState('')
+  // Référence de ce qui est enregistré en base, pour détecter si on a changé quelque chose.
+  const [savedSnapshot, setSavedSnapshot] = useState({ ...EMPTY_SCORES, comment: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -61,22 +67,61 @@ export default function RatingPage({ title, currentUserEmail, onBack, onSaved })
       .eq('user_email', currentUserEmail)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) {
-          setScores({
-            score_general: data.score_general,
-            score_scenario: data.score_scenario,
-            score_personnages: data.score_personnages,
-          })
-          setComment(data.comment || '')
-        }
+        const initial = data
+          ? {
+              score_general: data.score_general,
+              score_scenario: data.score_scenario,
+              score_personnages: data.score_personnages,
+              comment: data.comment || '',
+            }
+          : { ...EMPTY_SCORES, comment: '' }
+
+        setScores({
+          score_general: initial.score_general,
+          score_scenario: initial.score_scenario,
+          score_personnages: initial.score_personnages,
+        })
+        setComment(initial.comment)
+        setSavedSnapshot(initial)
         setLoading(false)
       })
   }, [title.id, currentUserEmail])
 
+  const isDirty =
+    scores.score_general !== savedSnapshot.score_general ||
+    scores.score_scenario !== savedSnapshot.score_scenario ||
+    scores.score_personnages !== savedSnapshot.score_personnages ||
+    comment !== savedSnapshot.comment
+
+  // On informe le parent (App.jsx) dès que l'état "modifications non enregistrées" change,
+  // pour qu'il puisse bloquer une navigation ailleurs si besoin.
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  // Avertit aussi si on essaie de fermer l'onglet ou de recharger la page (pas juste
+  // de naviguer dans le site), tant qu'il y a des modifications non enregistrées.
+  useEffect(() => {
+    function handleBeforeUnload(e) {
+      if (isDirty) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty])
+
+  // Quand le composant disparaît (on a bien quitté la page), on s'assure de ne pas
+  // laisser le parent bloqué sur "modifications non enregistrées".
+  useEffect(() => {
+    return () => onDirtyChange?.(false)
+  }, [onDirtyChange])
+
   const allFilled = scores.score_general > 0 && scores.score_scenario > 0 && scores.score_personnages > 0
 
   async function handleSave() {
-    if (!allFilled) return
+    if (!allFilled) return false
     setSaving(true)
     await supabase.from('ratings').upsert(
       {
@@ -91,9 +136,16 @@ export default function RatingPage({ title, currentUserEmail, onBack, onSaved })
       { onConflict: 'title_id,user_email' }
     )
     setSaving(false)
-    setSaved(true)
+    setSavedSnapshot({ ...scores, comment })
     onSaved?.()
+    return true
   }
+
+  // Exposé à App.jsx, pour pouvoir déclencher la sauvegarde depuis la popup
+  // "Enregistrer et quitter" sans dupliquer la logique de sauvegarde ici et là-bas.
+  useImperativeHandle(ref, () => ({
+    save: handleSave,
+  }))
 
   return (
     <main className="main-content rating-page">
@@ -128,7 +180,7 @@ export default function RatingPage({ title, currentUserEmail, onBack, onSaved })
                 </div>
                 <StarRatingLarge
                   value={scores[c.key]}
-                  onChange={(v) => { setScores((s) => ({ ...s, [c.key]: v })); setSaved(false) }}
+                  onChange={(v) => setScores((s) => ({ ...s, [c.key]: v }))}
                 />
                 {scores[c.key] > 0 && <span className="rating-page-criterion-value">{scores[c.key]} / 10</span>}
               </div>
@@ -140,7 +192,7 @@ export default function RatingPage({ title, currentUserEmail, onBack, onSaved })
             <textarea
               id="rating-comment"
               value={comment}
-              onChange={(e) => { setComment(e.target.value); setSaved(false) }}
+              onChange={(e) => setComment(e.target.value)}
               placeholder="Qu'est-ce que tu en as pensé ?"
               rows={5}
             />
@@ -151,10 +203,12 @@ export default function RatingPage({ title, currentUserEmail, onBack, onSaved })
           )}
 
           <button className="btn btn-primary rating-page-save" disabled={!allFilled || saving} onClick={handleSave}>
-            {saving ? 'Enregistrement…' : saved ? 'Enregistré ✓' : 'Enregistrer ma note'}
+            {saving ? 'Enregistrement…' : !isDirty ? 'Enregistré ✓' : 'Enregistrer ma note'}
           </button>
         </>
       )}
     </main>
   )
-}
+})
+
+export default RatingPage
