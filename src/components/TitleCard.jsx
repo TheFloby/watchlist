@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { emailToPseudo } from '../accounts'
+import { hasUnwatchedSeason } from '../seasonUtils'
 
 const TYPE_LABELS = {
   serie: 'Série',
@@ -27,7 +28,7 @@ function formatShortDate(isoDate) {
   return `${day}/${month}/${year.slice(-2)}`
 }
 
-export default function TitleCard({ title, currentUserEmail, onChanged, onOpen }) {
+export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, readOnly = false }) {
   const [busy, setBusy] = useState(false)
 
   const proposedBy = emailToPseudo(title.added_by_email)
@@ -74,6 +75,8 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen }
     })
   }
 
+  const showNewSeasonButton = title.status === 'vu' && hasUnwatchedSeason(title)
+
   return (
     <article className="title-card">
       <div className="title-card-poster" onClick={onOpen} role="button" tabIndex={0}>
@@ -98,128 +101,134 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen }
           <p className="title-card-meta">{seasonLabel}</p>
         )}
 
-        {title.new_season_available && (
+        {title.status === 'vu' && hasUnwatchedSeason(title) && (
           <p className="title-card-season-notice title-card-season-notice--new">
             <span className="title-card-season-dot" />
             Nouvelle saison disponible
           </p>
         )}
 
-        {!title.new_season_available && title.status === 'vu' && title.upcoming_season_date && (
+        {title.status === 'vu' && !hasUnwatchedSeason(title) && title.upcoming_season_date && (
           <p className="title-card-season-notice">
             <span className="title-card-season-dot" />
             Saison {title.upcoming_season_number} le {formatShortDate(title.upcoming_season_date)}
           </p>
         )}
 
-        <div className="title-card-actions">
-          {/* --- PROPOSITION : seule l'autre personne peut valider/refuser --- */}
-          {title.status === 'proposition' && (
-            isOwnProposal ? (
-              <p className="title-card-waiting">En attente de validation</p>
-            ) : (
-              <>
-                <button
-                  className="btn btn-validate"
-                  disabled={busy}
-                  onClick={() => confirmAndUpdate(`Valider la proposition « ${title.name} » ?`, { status: 'a_voir' })}
-                >
-                  Valider
-                </button>
-                <button
-                  className="btn btn-refuse"
-                  disabled={busy}
-                  onClick={() => confirmAndUpdate(`Refuser la proposition « ${title.name} » ?`, { status: 'refusee' })}
-                >
-                  Refuser
-                </button>
-              </>
-            )
-          )}
+        {readOnly ? (
+          <div className="title-card-actions">
+            <button className="btn btn-action" onClick={onOpen}>Noter</button>
+          </div>
+        ) : (
+          <div className="title-card-actions">
+            {/* --- PROPOSITION : seule l'autre personne peut valider/refuser --- */}
+            {title.status === 'proposition' && (
+              isOwnProposal ? (
+                <p className="title-card-waiting">En attente de validation</p>
+              ) : (
+                <>
+                  <button
+                    className="btn btn-validate"
+                    disabled={busy}
+                    onClick={() => confirmAndUpdate(`Valider la proposition « ${title.name} » ?`, { status: 'a_voir' })}
+                  >
+                    Valider
+                  </button>
+                  <button
+                    className="btn btn-refuse"
+                    disabled={busy}
+                    onClick={() => confirmAndUpdate(`Refuser la proposition « ${title.name} » ?`, { status: 'refusee' })}
+                  >
+                    Refuser
+                  </button>
+                </>
+              )
+            )}
 
-          {/* --- À VOIR : on commence --- */}
-          {title.status === 'a_voir' && (
-            <button
-              className="btn btn-action"
-              disabled={busy}
-              onClick={() => confirmAndUpdate(
-                `Commencer « ${title.name} » ?`,
-                { status: 'en_cours', current_season: hasSeasons(title) ? 1 : null }
-              )}
-            >
-              On commence
-            </button>
-          )}
-
-          {/* --- EN COURS : menu saison (si applicable) + terminé/abandonner --- */}
-          {title.status === 'en_cours' && (
-            <>
-              {hasSeasons(title) && (
-                <select
-                  className="status-select"
-                  value={title.current_season || 1}
-                  onChange={changeSeason}
-                  aria-label="Saison en cours"
-                >
-                  {Array.from({ length: Math.max(title.total_seasons || 1, title.current_season || 1) }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>
-                      Saison {n}
-                    </option>
-                  ))}
-                </select>
-              )}
+            {/* --- À VOIR : on commence --- */}
+            {title.status === 'a_voir' && (
               <button
                 className="btn btn-action"
                 disabled={busy}
-                onClick={() => confirmAndUpdate(`Marquer « ${title.name} » comme terminé ?`, { status: 'vu' })}
+                onClick={() => confirmAndUpdate(
+                  `Commencer « ${title.name} » ?`,
+                  { status: 'en_cours', current_season: hasSeasons(title) ? 1 : null }
+                )}
               >
-                Terminé
+                On commence
               </button>
+            )}
+
+            {/* --- EN COURS : menu saison (si applicable) + terminé/abandonner --- */}
+            {title.status === 'en_cours' && (
+              <>
+                {hasSeasons(title) && (
+                  <select
+                    className="status-select"
+                    value={title.current_season || 1}
+                    onChange={changeSeason}
+                    aria-label="Saison en cours"
+                  >
+                    {Array.from({ length: Math.max(title.total_seasons || 1, title.current_season || 1) }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        Saison {n}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  className="btn btn-action"
+                  disabled={busy}
+                  onClick={() => confirmAndUpdate(`Marquer « ${title.name} » comme terminé ?`, { status: 'vu' })}
+                >
+                  Terminé
+                </button>
+                <button
+                  className="btn btn-abandon"
+                  disabled={busy}
+                  onClick={() => confirmAndUpdate(`Abandonner « ${title.name} » ?`, { status: 'jamais_fini' })}
+                >
+                  Abandonner
+                </button>
+              </>
+            )}
+
+            {/* --- JAMAIS FINI : reprendre, à la saison où on s'était arrêté --- */}
+            {title.status === 'jamais_fini' && (
               <button
-                className="btn btn-abandon"
+                className="btn btn-action"
                 disabled={busy}
-                onClick={() => confirmAndUpdate(`Abandonner « ${title.name} » ?`, { status: 'jamais_fini' })}
+                onClick={() => confirmAndUpdate(`Reprendre « ${title.name} » ?`, { status: 'en_cours' })}
               >
-                Abandonner
+                Reprendre
               </button>
-            </>
-          )}
+            )}
 
-          {/* --- JAMAIS FINI : reprendre, à la saison où on s'était arrêté --- */}
-          {title.status === 'jamais_fini' && (
-            <button
-              className="btn btn-action"
-              disabled={busy}
-              onClick={() => confirmAndUpdate(`Reprendre « ${title.name} » ?`, { status: 'en_cours' })}
-            >
-              Reprendre
+            {/* --- TERMINÉ : voir la nouvelle saison (si dispo) et/ou revoir depuis le début --- */}
+            {showNewSeasonButton && (
+              <button className="btn btn-action" disabled={busy} onClick={watchNewSeason}>
+                Voir la nouvelle saison
+              </button>
+            )}
+
+            {title.status === 'vu' && (
+              <button
+                className="btn btn-action"
+                disabled={busy}
+                onClick={() => confirmAndUpdate(
+                  `Revoir « ${title.name} » depuis le début ?`,
+                  { status: 'en_cours', current_season: hasSeasons(title) ? 1 : null }
+                )}
+              >
+                Revoir
+              </button>
+            )}
+
+            <button className="icon-btn icon-btn--danger" onClick={handleDelete} aria-label="Supprimer" disabled={busy}>
+              ✕
             </button>
-          )}
-
-          {/* --- TERMINÉ : voir la nouvelle saison (si dispo) et/ou revoir depuis le début --- */}
-          {title.status === 'vu' && title.new_season_available && (
-            <button className="btn btn-action" disabled={busy} onClick={watchNewSeason}>
-              Voir la nouvelle saison
-            </button>
-          )}
-
-          {title.status === 'vu' && (
-            <button
-              className="btn btn-action"
-              disabled={busy}
-              onClick={() => confirmAndUpdate(
-                `Revoir « ${title.name} » depuis le début ?`,
-                { status: 'en_cours', current_season: hasSeasons(title) ? 1 : null }
-              )}
-            >
-              Revoir
-            </button>
-          )}
-
-          <button className="icon-btn icon-btn--danger" onClick={handleDelete} aria-label="Supprimer" disabled={busy}>
-            ✕
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </article>
   )

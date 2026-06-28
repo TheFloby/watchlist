@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { fetchTitleDetails } from '../tmdb'
 import { emailToPseudo, avatarForEmail } from '../accounts'
+import { weightedAverage } from '../seasonUtils'
 
 const TYPE_LABELS = {
   serie: 'Série',
@@ -10,40 +11,15 @@ const TYPE_LABELS = {
   manga: 'Manga',
 }
 
-// Affiche 10 étoiles cliquables, avec prise en charge des demi-étoiles (pas de 0.5).
-// value : note actuelle (0.5 à 10). onChange : appelé avec la nouvelle note au clic.
-function StarRating({ value, onChange, readOnly = false }) {
-  const [hoverValue, setHoverValue] = useState(null)
-  const displayValue = hoverValue ?? value ?? 0
-
-  function handleClick(starIndex, e) {
-    if (readOnly) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const isHalf = e.clientX - rect.left < rect.width / 2
-    onChange(isHalf ? starIndex + 0.5 : starIndex + 1)
-  }
-
-  function handleMouseMove(starIndex, e) {
-    if (readOnly) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const isHalf = e.clientX - rect.left < rect.width / 2
-    setHoverValue(isHalf ? starIndex + 0.5 : starIndex + 1)
-  }
-
+// Affiche 10 étoiles en lecture seule (pour montrer une moyenne déjà calculée).
+function StarRatingReadOnly({ value }) {
+  const displayValue = value ?? 0
   return (
-    <div
-      className={`star-rating ${readOnly ? 'star-rating--readonly' : ''}`}
-      onMouseLeave={() => setHoverValue(null)}
-    >
+    <div className="star-rating star-rating--readonly">
       {Array.from({ length: 10 }, (_, i) => {
         const fillRatio = Math.max(0, Math.min(1, displayValue - i))
         return (
-          <span
-            key={i}
-            className="star-rating-star"
-            onMouseMove={(e) => handleMouseMove(i, e)}
-            onClick={(e) => handleClick(i, e)}
-          >
+          <span key={i} className="star-rating-star">
             <span className="star-rating-star-empty">★</span>
             <span className="star-rating-star-fill" style={{ width: `${fillRatio * 100}%` }}>★</span>
           </span>
@@ -53,16 +29,11 @@ function StarRating({ value, onChange, readOnly = false }) {
   )
 }
 
-export default function TitleModal({ title, currentUserEmail, onClose, onChanged }) {
+export default function TitleModal({ title, currentUserEmail, onClose, onRate }) {
   const [details, setDetails] = useState(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [ratings, setRatings] = useState([])
   const [loadingRatings, setLoadingRatings] = useState(true)
-
-  const [myScore, setMyScore] = useState(null)
-  const [myComment, setMyComment] = useState('')
-  const [editingComment, setEditingComment] = useState(false)
-  const [savingRating, setSavingRating] = useState(false)
 
   // Charge les infos TMDB (synopsis, casting, etc.) si le titre a un tmdb_id.
   useEffect(() => {
@@ -82,42 +53,12 @@ export default function TitleModal({ title, currentUserEmail, onClose, onChanged
       .eq('title_id', title.id)
       .then(({ data }) => {
         setRatings(data || [])
-        const mine = (data || []).find((r) => r.user_email === currentUserEmail)
-        if (mine) {
-          setMyScore(mine.score)
-          setMyComment(mine.comment || '')
-        }
         setLoadingRatings(false)
       })
-  }, [title.id, currentUserEmail])
+  }, [title.id])
 
-  async function saveRating(score, comment) {
-    setSavingRating(true)
-    await supabase.from('ratings').upsert(
-      {
-        title_id: title.id,
-        user_email: currentUserEmail,
-        score,
-        comment: comment?.trim() || null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'title_id,user_email' }
-    )
-    const { data } = await supabase.from('ratings').select('*').eq('title_id', title.id)
-    setRatings(data || [])
-    setSavingRating(false)
-    setEditingComment(false)
-    onChanged?.()
-  }
-
-  function handleStarChange(newScore) {
-    setMyScore(newScore)
-    saveRating(newScore, myComment)
-  }
-
-  function handleCommentSave() {
-    saveRating(myScore || 0.5, myComment)
-  }
+  const myRating = ratings.find((r) => r.user_email === currentUserEmail)
+  const myAverage = weightedAverage(myRating)
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -193,25 +134,15 @@ export default function TitleModal({ title, currentUserEmail, onClose, onChanged
 
         <div className="title-modal-section">
           <h3>Ma note</h3>
-          <StarRating value={myScore} onChange={handleStarChange} />
-          {myScore && <p className="title-modal-score-value">{myScore} / 10</p>}
-
-          {editingComment ? (
-            <div className="title-modal-comment-edit">
-              <textarea
-                value={myComment}
-                onChange={(e) => setMyComment(e.target.value)}
-                placeholder="Ton avis sur cette série/film…"
-                rows={3}
-              />
-              <button className="btn btn-primary" disabled={savingRating} onClick={handleCommentSave}>
-                {savingRating ? 'Enregistrement…' : 'Enregistrer'}
-              </button>
-            </div>
+          {myRating ? (
+            <>
+              <StarRatingReadOnly value={myAverage} />
+              <p className="title-modal-score-value">{myAverage} / 10</p>
+              {myRating.comment && <p className="title-modal-my-comment">{myRating.comment}</p>}
+              <button className="link-btn" onClick={onRate}>Envie de modifier ? Clique ici</button>
+            </>
           ) : (
-            <button className="link-btn" onClick={() => setEditingComment(true)}>
-              {myComment ? 'Modifier mon commentaire' : '+ Ajouter un commentaire'}
-            </button>
+            <button className="link-btn" onClick={onRate}>Pas encore noté, clique ici</button>
           )}
         </div>
 
@@ -227,13 +158,14 @@ export default function TitleModal({ title, currentUserEmail, onClose, onChanged
               {ratings.map((r) => {
                 const pseudo = emailToPseudo(r.user_email)
                 const avatar = avatarForEmail(r.user_email)
+                const avg = weightedAverage(r)
                 return (
                   <div key={r.id} className="review-bubble-row">
                     {avatar && <img src={avatar} alt="" className="review-bubble-avatar" />}
                     <div className="review-bubble">
                       <div className="review-bubble-header">
                         <strong>{pseudo}</strong>
-                        <span className="review-bubble-score">{r.score} / 10</span>
+                        <span className="review-bubble-score">{avg} / 10</span>
                       </div>
                       {r.comment && <p className="review-bubble-text">{r.comment}</p>}
                     </div>

@@ -61,8 +61,11 @@ create table if not exists ratings (
   user_id uuid references auth.users(id) on delete set null,
   user_email text not null,
 
-  -- Note de 0.5 à 10, par pas de 0.5 (demi-étoiles sur une échelle de 10)
-  score numeric(3,1) not null check (score >= 0.5 and score <= 10),
+  -- 3 critères notés séparément, chacun de 0.5 à 10 par pas de 0.5 (demi-étoiles).
+  -- La moyenne affichée ailleurs sur le site = (score_general*2 + score_scenario + score_personnages) / 4
+  score_general numeric(3,1) not null check (score_general >= 0.5 and score_general <= 10),
+  score_scenario numeric(3,1) not null check (score_scenario >= 0.5 and score_scenario <= 10),
+  score_personnages numeric(3,1) not null check (score_personnages >= 0.5 and score_personnages <= 10),
   comment text,
 
   created_at timestamp with time zone default now(),

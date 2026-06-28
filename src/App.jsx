@@ -4,7 +4,9 @@ import Auth from './components/Auth'
 import AddTitleForm from './components/AddTitleForm'
 import TitleCard from './components/TitleCard'
 import TitleModal from './components/TitleModal'
+import RatingPage from './components/RatingPage'
 import { emailToPseudo, avatarForEmail } from './accounts'
+import { hasUnwatchedSeason } from './seasonUtils'
 import './App.css'
 
 const TABS = [
@@ -43,6 +45,7 @@ export default function App() {
   const [notesSubTab, setNotesSubTab] = useState('a_noter')
   const [ratingsByTitle, setRatingsByTitle] = useState({})
   const [openTitleId, setOpenTitleId] = useState(null)
+  const [ratingPageTitleId, setRatingPageTitleId] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -94,10 +97,10 @@ export default function App() {
   const pseudo = emailToPseudo(session.user.email)
   const avatar = avatarForEmail(session.user.email)
 
-  // Dans l'onglet Terminé : 0 = nouvelle saison sortie (le plus prioritaire),
+  // Dans l'onglet Terminé : 0 = nouvelle saison disponible (le plus prioritaire),
   // 1 = saison annoncée mais pas encore sortie, 2 = rien de particulier.
   function seasonPriority(t) {
-    if (t.new_season_available) return 0
+    if (hasUnwatchedSeason(t)) return 0
     if (t.upcoming_season_date) return 1
     return 2
   }
@@ -244,55 +247,65 @@ export default function App() {
       </aside>
 
       {/* Contenu principal */}
-      <main className="main-content">
-        <header className="content-header">
-          <h1>{currentTab.label}</h1>
-          <div className="content-header-filters">
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher un titre…"
-              className="search-input"
-              aria-label="Rechercher un titre"
-            />
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="status-select"
-              aria-label="Filtrer par type"
-            >
-              <option value="all">Tous les types</option>
-              <option value="serie">Séries</option>
-              <option value="serie_animee">Séries animées</option>
-              <option value="film">Films</option>
-              <option value="manga">Mangas</option>
-            </select>
-          </div>
-        </header>
+      {ratingPageTitleId && titles.find((t) => t.id === ratingPageTitleId) ? (
+        <RatingPage
+          title={titles.find((t) => t.id === ratingPageTitleId)}
+          currentUserEmail={session.user.email}
+          onBack={() => setRatingPageTitleId(null)}
+          onSaved={() => fetchMyRatings(session.user.email)}
+        />
+      ) : (
+        <main className="main-content">
+          <header className="content-header">
+            <h1>{currentTab.label}</h1>
+            <div className="content-header-filters">
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher un titre…"
+                className="search-input"
+                aria-label="Rechercher un titre"
+              />
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="status-select"
+                aria-label="Filtrer par type"
+              >
+                <option value="all">Tous les types</option>
+                <option value="serie">Séries</option>
+                <option value="serie_animee">Séries animées</option>
+                <option value="film">Films</option>
+                <option value="manga">Mangas</option>
+              </select>
+            </div>
+          </header>
 
-        <div className="title-grid-wrap">
-          {loadingTitles ? (
-            <p className="empty-state">Chargement des titres…</p>
-          ) : visibleTitles.length === 0 ? (
-            <div className="empty-state">
-              <p>{searchQuery.trim() ? `Aucun résultat pour « ${searchQuery.trim()} ».` : currentTab.empty}</p>
-            </div>
-          ) : (
-            <div className="title-grid">
-              {visibleTitles.map((title) => (
-                <TitleCard
-                  key={title.id}
-                  title={title}
-                  currentUserEmail={session.user.email}
-                  onChanged={() => { fetchTitles(); fetchMyRatings(session.user.email) }}
-                  onOpen={() => setOpenTitleId(title.id)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
+          <div className="title-grid-wrap">
+            {loadingTitles ? (
+              <p className="empty-state">Chargement des titres…</p>
+            ) : visibleTitles.length === 0 ? (
+              <div className="empty-state">
+                <p>{searchQuery.trim() ? `Aucun résultat pour « ${searchQuery.trim()} ».` : currentTab.empty}</p>
+              </div>
+            ) : (
+              <div className="title-grid">
+                {visibleTitles.map((title) => (
+                  <TitleCard
+                    key={title.id}
+                    title={title}
+                    currentUserEmail={session.user.email}
+                    onChanged={() => { fetchTitles(); fetchMyRatings(session.user.email) }}
+                    onOpen={() => activeTab === 'notes' ? setRatingPageTitleId(title.id) : setOpenTitleId(title.id)}
+                    readOnly={activeTab === 'notes'}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
+      )}
 
       {showAddForm && (
         <AddTitleForm
@@ -312,6 +325,10 @@ export default function App() {
           currentUserEmail={session.user.email}
           onClose={() => setOpenTitleId(null)}
           onChanged={() => fetchMyRatings(session.user.email)}
+          onRate={() => {
+            setOpenTitleId(null)
+            setRatingPageTitleId(openTitleId)
+          }}
         />
       )}
     </div>

@@ -4,22 +4,25 @@ Site perso pour Thomas et Flo : propositions, validations croisées, suivi des s
 
 ## Nouveautés de cette mise à jour
 
-- **Menu "Notes"** : un nouvel onglet dans la sidebar, avec deux sous-onglets **À noter** et **Déjà noté**. Y figurent tous les titres déjà passés par "En cours" au moins une fois (donc pas les Propositions ni les À voir jamais commencés). Chacun note de son côté, sur 10 avec demi-étoiles, plus un commentaire — c'est individuel par compte.
-- **Fiche détaillée** : cliquer sur l'affiche ou le titre d'une carte (n'importe quel onglet) ouvre une fenêtre avec synopsis, note TMDB, genres, année/durée, casting, lien vers la bande-annonce (quand disponible), et les avis de Thomas et Flo présentés en bulles avec leur avatar.
+- **3 critères de notation** au lieu d'une seule note : Ressenti général (compte double), Scénario, Personnages. La moyenne affichée partout = `(ressenti×2 + scénario + personnages) / 4`.
+- **Page de notation dédiée** : noter ou modifier sa note se fait maintenant sur une vraie page séparée (accessible depuis le menu "Notes" ou depuis la fiche détaillée), plus dans une fenêtre superposée.
+- **Fiche détaillée en lecture seule pour la notation** : elle affiche ta note (si tu en as déjà mis une) avec un lien "Envie de modifier ? Clique ici", ou "Pas encore noté, clique ici" sinon — les deux renvoient vers la page de notation.
+- **Page "Notes" simplifiée** : plus aucune action de gestion (Revoir, Abandonner, supprimer...) sur les cartes de ce menu — juste un bouton "Noter", pour rester focus sur la notation.
+- **Détection élargie des nouvelles saisons** : en plus de la vérification automatique quotidienne, si une série "Terminé" a une saison de retard par rapport au total connu (ex: vue jusqu'à la saison 3 alors qu'il y en a 4), le badge "Nouvelle saison" + le bouton apparaissent aussi — utile pour tout l'historique rentré d'un coup, sans attendre le passage du cron.
 
-Une nouvelle migration SQL est nécessaire (nouvelle table `ratings` + une colonne sur `titles`). Pas de nouveau réglage Vercel.
+Une nouvelle migration SQL est nécessaire (passage d'une note unique à 3 critères dans `ratings`). Pas de nouveau réglage Vercel.
 
 ## 1. Mettre à jour la base de données (Supabase)
 
 1. Dans Supabase → **SQL Editor** → **New query**.
-2. Copie-colle le contenu de `sql/migration_4.sql`, clique **Run**.
+2. Copie-colle le contenu de `sql/migration_5.sql`, clique **Run**.
 
 ## 2. Mettre à jour le code (GitHub)
 
 ```powershell
 cd C:\Users\flori\OneDrive\Projets\watchlist
 git add .
-git commit -m "Systeme de notation et fiche detaillee"
+git commit -m "3 criteres de notation et page dediee"
 git push
 ```
 
@@ -57,8 +60,9 @@ Propositions ──valide──→ À voir ──"On commence"──→ En cours
 - **Mangas** : pas de saisons par défaut, sauf si le manga a été trouvé via la recherche TMDB (son adaptation animée) — dans ce cas il a aussi un menu de saisons et profite de la détection automatique, comme une vraie série.
 - **Confirmation** : chaque bouton d'action affiche une popup "Es-tu sûr ?" avant d'appliquer le changement.
 - **Recherche** : un champ de recherche par nom est disponible sur tous les onglets, filtre en temps réel.
-- **Notes** : menu dédié dans la sidebar, séparé des 6 onglets de statut. Contient tous les titres déjà passés par "En cours" au moins une fois. "À noter" (pas encore noté par toi) et "Déjà noté" (modifiable à tout moment) — c'est individuel à chaque compte.
-- **Fiche détaillée** : clique sur l'affiche ou le titre d'une carte, dans n'importe quel onglet, pour ouvrir la fiche avec les infos TMDB et les avis de chacun.
+- **Notes** : menu dédié dans la sidebar, séparé des 6 onglets de statut. Contient tous les titres déjà passés par "En cours" au moins une fois. "À noter" (pas encore noté par toi) et "Déjà noté" (modifiable à tout moment) — c'est individuel à chaque compte. Les cartes y sont en lecture pure : pas de gestion de statut, juste un bouton "Noter".
+- **Fiche détaillée** : clique sur l'affiche ou le titre d'une carte, dans n'importe quel onglet, pour ouvrir la fiche avec les infos TMDB et les avis de chacun. Ta propre note s'y affiche en lecture seule, avec un lien pour aller la modifier sur la page dédiée.
+- **Notation à 3 critères** : Ressenti général, Scénario, Personnages, chacun sur 10 avec demi-étoiles, plus un commentaire global. Le ressenti général compte double dans la moyenne affichée partout ailleurs.
 
 ## Pour faire des modifications plus tard
 
@@ -76,7 +80,8 @@ series-tracker/
 │   ├── migration.sql          → mise à jour n°1 (workflow, saisons)
 │   ├── migration_2.sql        → mise à jour n°2 (détection nouvelle saison)
 │   ├── migration_3.sql        → mise à jour n°3 (date de saison annoncée)
-│   └── migration_4.sql        → mise à jour n°4 (notes et avis)
+│   ├── migration_4.sql        → mise à jour n°4 (notes et avis, version 1 note)
+│   └── migration_5.sql        → mise à jour n°5 (3 critères de notation)
 ├── public/
 │   ├── logo.png               → logo TFCU complet (header, écran de connexion, favicon)
 │   ├── pwa-192.png, pwa-512.png → icônes d'installation app
@@ -89,6 +94,7 @@ series-tracker/
 │   ├── supabaseClient.js      → connexion à la base de données (clé publique)
 │   ├── config.js              → ta clé API TMDB (côté site)
 │   ├── tmdb.js                → recherche + détails enrichis (synopsis, casting...)
+│   ├── seasonUtils.js         → calculs partagés : saisons en retard, moyenne pondérée
 │   ├── App.jsx                → page principale (sidebar + onglets + menu Notes)
 │   ├── App.css                → tous les styles visuels
 │   ├── index.css              → styles globaux, palette de couleurs
@@ -97,7 +103,8 @@ series-tracker/
 │       ├── Auth.jsx           → écran de connexion (sélection avatar + mot de passe)
 │       ├── AddTitleForm.jsx   → formulaire de proposition (avec recherche TMDB)
 │       ├── TitleCard.jsx      → carte d'un titre, avec ses actions selon le statut
-│       └── TitleModal.jsx     → fiche détaillée (infos TMDB + notes/avis)
+│       ├── TitleModal.jsx     → fiche détaillée (infos TMDB + note en lecture seule)
+│       └── RatingPage.jsx     → page dédiée pour noter (3 critères + commentaire)
 ├── index.html
 ├── package.json
 └── vite.config.js
