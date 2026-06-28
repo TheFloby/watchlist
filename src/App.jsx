@@ -151,6 +151,7 @@ export default function App() {
 
   function selectTab(key) {
     guardedNavigate(() => {
+      setRatingPageTitleId(null)
       setActiveTab(key)
       setSidebarOpen(false)
       try {
@@ -160,6 +161,28 @@ export default function App() {
         // sans bloquer l'app — la persistance ne fonctionnera juste pas cette fois.
       }
     })
+  }
+
+  // Spécifique au bouton "Notes" de la sidebar : sur mobile, on ne ferme pas le tiroir
+  // tout de suite, pour laisser le temps de choisir entre "À noter" et "Déjà noté"
+  // (qui eux ferment vraiment le tiroir une fois le choix fait).
+  function selectNotesMainTab() {
+    guardedNavigate(() => {
+      setRatingPageTitleId(null)
+      setActiveTab('notes')
+      try {
+        localStorage.setItem('watchlist_active_tab', 'notes')
+      } catch {
+        // Pas grave si le navigateur bloque localStorage.
+      }
+    })
+  }
+
+  // Choix du sous-onglet Notes : ferme le tiroir mobile cette fois, puisque c'est
+  // le vrai point de destination.
+  function selectNotesSubTab(sub) {
+    setNotesSubTab(sub)
+    setSidebarOpen(false)
   }
 
   // Les 3 choix possibles de la popup "modifications non enregistrées" :
@@ -191,7 +214,6 @@ export default function App() {
       setRatingPageTitleId(titleId)
       setNotesSubTab(ratingsByTitle[titleId] ? 'deja_note' : 'a_noter')
       setActiveTab('notes')
-      setSidebarOpen(false)
       try {
         localStorage.setItem('watchlist_active_tab', 'notes')
       } catch {
@@ -248,7 +270,7 @@ export default function App() {
             return (
               <button
                 className={`sidebar-link ${activeTab === 'notes' ? 'sidebar-link--active' : ''}`}
-                onClick={() => selectTab('notes')}
+                onClick={selectNotesMainTab}
               >
                 <span className="sidebar-link-icon">★</span>
                 Notes
@@ -261,13 +283,13 @@ export default function App() {
             <div className="sidebar-subnav">
               <button
                 className={`sidebar-sublink ${notesSubTab === 'a_noter' ? 'sidebar-sublink--active' : ''}`}
-                onClick={() => setNotesSubTab('a_noter')}
+                onClick={() => selectNotesSubTab('a_noter')}
               >
                 À noter
               </button>
               <button
                 className={`sidebar-sublink ${notesSubTab === 'deja_note' ? 'sidebar-sublink--active' : ''}`}
-                onClick={() => setNotesSubTab('deja_note')}
+                onClick={() => selectNotesSubTab('deja_note')}
               >
                 Déjà noté
               </button>

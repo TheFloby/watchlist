@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { emailToPseudo } from '../accounts'
 import { hasUnwatchedSeason } from '../seasonUtils'
+import { useConfirm } from '../ConfirmContext'
 
 const TYPE_LABELS = {
   serie: 'Série',
@@ -30,6 +31,7 @@ function formatShortDate(isoDate) {
 
 export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, readOnly = false, alreadyRated = false }) {
   const [busy, setBusy] = useState(false)
+  const confirmAction = useConfirm()
 
   const proposedBy = emailToPseudo(title.added_by_email)
   const isOwnProposal = title.added_by_email === currentUserEmail
@@ -45,13 +47,15 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
   }
 
   // Demande confirmation avant chaque action de changement de statut.
-  function confirmAndUpdate(message, fields) {
-    if (!confirm(message)) return
+  async function confirmAndUpdate(message, fields) {
+    const ok = await confirmAction(message)
+    if (!ok) return
     update(fields)
   }
 
   async function handleDelete() {
-    if (!confirm(`Retirer « ${title.name} » de la liste ?`)) return
+    const ok = await confirmAction(`Retirer « ${title.name} » de la liste ?`)
+    if (!ok) return
     setBusy(true)
     await supabase.from('titles').delete().eq('id', title.id)
     setBusy(false)
@@ -66,8 +70,9 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
     ? `Saison ${title.current_season}${title.total_seasons ? ` / ${title.total_seasons}` : ''}`
     : null
 
-  function watchNewSeason() {
-    if (!confirm(`Une nouvelle saison de « ${title.name} » est sortie. La mettre dans À voir ?`)) return
+  async function watchNewSeason() {
+    const ok = await confirmAction(`Une nouvelle saison de « ${title.name} » est sortie. La mettre dans À voir ?`)
+    if (!ok) return
     update({
       status: 'a_voir',
       current_season: (title.current_season || 0) + 1,
