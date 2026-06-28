@@ -207,6 +207,11 @@
   color: #f0a49c;
 }
 
+.auth-message--success {
+  background: rgba(109, 219, 78, 0.15);
+  color: var(--accent-text);
+}
+
 .auth-message--info {
   background: var(--accent-glow);
   color: var(--accent-text);
@@ -447,6 +452,7 @@
   object-fit: cover;
   border: 1px solid var(--rule-strong);
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .sidebar-user-info {
@@ -1401,6 +1407,80 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* ============================================
+   ACTIVITY LOG (journal d'activité caché)
+   ============================================ */
+
+.activity-log-page {
+  max-width: 680px;
+}
+
+.activity-log-page h1 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  margin: 4px 0 4px;
+  color: var(--cream);
+}
+
+.activity-log-subtitle {
+  font-size: 13px;
+  color: var(--cream-faint);
+  margin: 0 0 26px;
+}
+
+.activity-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activity-log-entry {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.activity-log-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--rule-strong);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.activity-log-entry-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.activity-log-entry-text p {
+  font-size: 14px;
+  color: var(--cream-dim);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.activity-log-entry-text strong {
+  color: var(--cream);
+}
+
+.activity-log-details {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.activity-log-date {
+  font-size: 11.5px;
+  color: var(--cream-faint);
 }
 
 /* ============================================

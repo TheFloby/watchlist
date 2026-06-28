@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient'
 import { emailToPseudo } from '../accounts'
 import { hasUnwatchedSeason } from '../seasonUtils'
 import { useConfirm } from '../ConfirmContext'
+import { logActivity } from '../activityLog'
 
 const TYPE_LABELS = {
   serie: 'Série',
@@ -56,11 +57,13 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
     onChanged()
   }
 
-  // Demande confirmation avant chaque action de changement de statut.
-  async function confirmAndUpdate(message, fields) {
+  // Demande confirmation avant chaque action de changement de statut, puis journalise
+  // l'action dans le journal d'activité (si un libellé est fourni).
+  async function confirmAndUpdate(message, fields, logLabel = null) {
     const ok = await confirmAction(message)
     if (!ok) return
     update(fields)
+    if (logLabel) logActivity(currentUserEmail, logLabel, title.name)
   }
 
   async function handleDelete() {
@@ -70,6 +73,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
     await supabase.from('titles').delete().eq('id', title.id)
     setBusy(false)
     onChanged()
+    logActivity(currentUserEmail, 'a supprimé', title.name)
   }
 
   function changeSeason(e) {
@@ -88,6 +92,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
       current_season: (title.current_season || 0) + 1,
       new_season_available: false,
     })
+    logActivity(currentUserEmail, 'a découvert une nouvelle saison de', title.name)
   }
 
   const showNewSeasonButton = title.status === 'vu' && hasUnwatchedSeason(title)
@@ -147,14 +152,14 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
                   <button
                     className="btn btn-validate"
                     disabled={busy}
-                    onClick={() => confirmAndUpdate(`Top, on valide « ${title.name} » ?`, { status: 'a_voir' })}
+                    onClick={() => confirmAndUpdate(`Top, on valide « ${title.name} » ?`, { status: 'a_voir' }, 'a validé la proposition')}
                   >
                     Valider
                   </button>
                   <button
                     className="btn btn-refuse"
                     disabled={busy}
-                    onClick={() => confirmAndUpdate(`Bon, on laisse tomber « ${title.name} » ?`, { status: 'refusee' })}
+                    onClick={() => confirmAndUpdate(`Bon, on laisse tomber « ${title.name} » ?`, { status: 'refusee' }, 'a refusé la proposition')}
                   >
                     Refuser
                   </button>
@@ -176,7 +181,8 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
                   disabled={busy}
                   onClick={() => confirmAndUpdate(
                     `Prêt à lancer « ${title.name} » ?`,
-                    { status: 'en_cours', current_season: hasSeasons(title) ? (title.current_season || 1) : null }
+                    { status: 'en_cours', current_season: hasSeasons(title) ? (title.current_season || 1) : null },
+                    'a commencé'
                   )}
                 >
                   On commence
@@ -204,14 +210,14 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
                 <button
                   className="btn btn-action"
                   disabled={busy}
-                  onClick={() => confirmAndUpdate(`« ${title.name} » fini, bravo ! On valide ?`, { status: 'vu' })}
+                  onClick={() => confirmAndUpdate(`« ${title.name} » fini, bravo ! On valide ?`, { status: 'vu' }, 'a terminé')}
                 >
                   Terminé
                 </button>
                 <button
                   className="btn btn-abandon"
                   disabled={busy}
-                  onClick={() => confirmAndUpdate(`On laisse « ${title.name} » de côté pour l'instant ?`, { status: 'jamais_fini' })}
+                  onClick={() => confirmAndUpdate(`On laisse « ${title.name} » de côté pour l'instant ?`, { status: 'jamais_fini' }, 'a abandonné')}
                 >
                   Abandonner
                 </button>
@@ -223,7 +229,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
               <button
                 className="btn btn-action"
                 disabled={busy}
-                onClick={() => confirmAndUpdate(`On s'y remet, « ${title.name} » ?`, { status: 'en_cours' })}
+                onClick={() => confirmAndUpdate(`On s'y remet, « ${title.name} » ?`, { status: 'en_cours' }, 'a repris')}
               >
                 Reprendre
               </button>
@@ -242,7 +248,8 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
                 disabled={busy}
                 onClick={() => confirmAndUpdate(
                   `Envie de redécouvrir « ${title.name} » depuis le début ?`,
-                  { status: 'en_cours', current_season: hasSeasons(title) ? 1 : null }
+                  { status: 'en_cours', current_season: hasSeasons(title) ? 1 : null },
+                  'a relancé'
                 )}
               >
                 Revoir

@@ -4,21 +4,22 @@ Site perso pour Thomas et Flo : propositions, validations croisées, suivi des s
 
 ## Nouveautés de cette mise à jour
 
-- **Films pas encore sortis en salle** : si tu proposes un film dont la sortie est dans le futur (ou pas encore annoncée), le bouton "On commence" est remplacé par un texte informatif — "En salle le JJ/MM/AA" si la date est connue, "En salle prochainement" sinon. Dès que la date est passée, ça redevient cliquable normalement.
+- **Journal d'activité caché** : un historique complet de toutes les actions (propositions, validations, terminés, abandons, notes...) avec qui a fait quoi et quand. Accessible uniquement via un triple-tap sur ton avatar en bas de la sidebar — pas de lien visible dans le menu, c'est volontairement discret.
+- **Changer son mot de passe** : une petite icône ⚙ à côté du bouton de déconnexion ouvre une popup pour changer son mot de passe (ancien + nouveau + confirmation).
 
-Une nouvelle migration SQL est nécessaire (1 nouvelle colonne `release_date` sur `titles`). Pas de nouveau réglage Vercel.
+Une nouvelle migration SQL est nécessaire (nouvelle table `activity_log`). Pas de nouveau réglage Vercel.
 
 ## 1. Mettre à jour la base de données (Supabase)
 
 1. Dans Supabase → **SQL Editor** → **New query**.
-2. Copie-colle le contenu de `sql/migration_7.sql`, clique **Run**.
+2. Copie-colle le contenu de `sql/migration_8.sql`, clique **Run**.
 
 ## 2. Mettre à jour le code (GitHub)
 
 ```powershell
 cd C:\Users\flori\OneDrive\Projets\watchlist
 git add .
-git commit -m "Films pas encore sortis en salle"
+git commit -m "Journal activite cache et changement mot de passe"
 git push
 ```
 
@@ -60,6 +61,8 @@ Propositions ──valide──→ À voir ──"On commence"──→ En cours
 - **Fiche détaillée** : clique sur l'affiche ou le titre d'une carte, dans n'importe quel onglet, pour ouvrir la fiche avec les infos TMDB et les avis de chacun. Ta propre note s'y affiche en lecture seule, avec un lien pour aller la modifier sur la page dédiée.
 - **Notation à 3 critères** : Ressenti général, Scénario, Personnages, chacun sur 10 avec demi-étoiles, plus un commentaire global. Le ressenti général compte double dans la moyenne affichée partout ailleurs.
 - **Tri** : menu déroulant à côté du filtre de type — par défaut (ordre d'ajout), alphabétique, date de sortie, type, note TMDB, ou votre note moyenne. S'applique à tous les onglets. Pour les tris alphabétique, date et notes, un bouton ↓/↑ à côté permet d'inverser l'ordre. Dans Terminé, les séries avec une nouvelle saison restent en haut uniquement pour le tri "par défaut" — les autres tris suivent l'ordre demandé sans exception. Les titres sans valeur connue pour le critère choisi (pas d'année, pas de note) restent toujours en bas. Le cron quotidien complète automatiquement la note TMDB et l'année de sortie pour les titres qui n'en ont pas encore.
+- **Journal d'activité** : triple-tap sur ton avatar (en bas de la sidebar) pour ouvrir un historique de toutes les actions du duo — qui a proposé/validé/terminé/abandonné/noté quoi, et quand. En lecture seule, pas d'action possible depuis cette page.
+- **Changer son mot de passe** : icône ⚙ à côté du bouton de déconnexion. Demande le mot de passe actuel avant d'autoriser le changement.
 
 ## Pour faire des modifications plus tard
 
@@ -80,7 +83,8 @@ series-tracker/
 │   ├── migration_4.sql        → mise à jour n°4 (notes et avis, version 1 note)
 │   ├── migration_5.sql        → mise à jour n°5 (3 critères de notation)
 │   ├── migration_6.sql        → mise à jour n°6 (colonnes de tri)
-│   └── migration_7.sql        → mise à jour n°7 (films pas encore sortis)
+│   ├── migration_7.sql        → mise à jour n°7 (films pas encore sortis)
+│   └── migration_8.sql        → mise à jour n°8 (journal d'activité)
 ├── public/
 │   ├── logo.png               → logo TFCU complet (header, écran de connexion, favicon)
 │   ├── pwa-192.png, pwa-512.png → icônes d'installation app
@@ -94,6 +98,7 @@ series-tracker/
 │   ├── config.js              → ta clé API TMDB (côté site)
 │   ├── tmdb.js                → recherche + détails enrichis (synopsis, casting...)
 │   ├── seasonUtils.js         → calculs partagés : saisons en retard, moyenne pondérée
+│   ├── activityLog.js         → fonction d'écriture dans le journal d'activité
 │   ├── ConfirmContext.jsx     → système global de popup de confirmation (remplace confirm() natif)
 │   ├── App.jsx                → page principale (sidebar + onglets + menu Notes)
 │   ├── App.css                → tous les styles visuels
@@ -104,7 +109,9 @@ series-tracker/
 │       ├── AddTitleForm.jsx   → formulaire de proposition (avec recherche TMDB)
 │       ├── TitleCard.jsx      → carte d'un titre, avec ses actions selon le statut
 │       ├── TitleModal.jsx     → fiche détaillée (infos TMDB + note en lecture seule)
-│       └── RatingPage.jsx     → page dédiée pour noter (3 critères + commentaire)
+│       ├── RatingPage.jsx     → page dédiée pour noter (3 critères + commentaire)
+│       ├── ActivityLogPage.jsx → journal d'activité caché (triple-tap sur l'avatar)
+│       └── ChangePasswordModal.jsx → popup de changement de mot de passe
 ├── index.html
 ├── package.json
 └── vite.config.js

@@ -5,6 +5,8 @@ import AddTitleForm from './components/AddTitleForm'
 import TitleCard from './components/TitleCard'
 import TitleModal from './components/TitleModal'
 import RatingPage from './components/RatingPage'
+import ActivityLogPage from './components/ActivityLogPage'
+import ChangePasswordModal from './components/ChangePasswordModal'
 import { emailToPseudo, avatarForEmail } from './accounts'
 import { hasUnwatchedSeason } from './seasonUtils'
 import './App.css'
@@ -51,6 +53,10 @@ export default function App() {
   const [sortOption, setSortOption] = useState('default')
   const [sortDirection, setSortDirection] = useState('desc')
   const [averageRatingByTitle, setAverageRatingByTitle] = useState({})
+  const [showActivityLog, setShowActivityLog] = useState(false)
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const avatarTapCountRef = useRef(0)
+  const avatarTapTimerRef = useRef(null)
   const ratingPageRef = useRef(null)
 
   useEffect(() => {
@@ -224,6 +230,7 @@ export default function App() {
   function selectTab(key) {
     guardedNavigate(() => {
       setRatingPageTitleId(null)
+      setShowActivityLog(false)
       setActiveTab(key)
       setSidebarOpen(false)
       resetFilters()
@@ -242,6 +249,7 @@ export default function App() {
   function selectNotesMainTab() {
     guardedNavigate(() => {
       setRatingPageTitleId(null)
+      setShowActivityLog(false)
       setActiveTab('notes')
       resetFilters()
       try {
@@ -259,6 +267,7 @@ export default function App() {
   function selectNotesSubTab(sub) {
     guardedNavigate(() => {
       setRatingPageTitleId(null)
+      setShowActivityLog(false)
       setNotesSubTab(sub)
       setSidebarOpen(false)
       resetFilters()
@@ -292,6 +301,7 @@ export default function App() {
   function openRatingPage(titleId) {
     guardedNavigate(() => {
       setRatingPageTitleId(titleId)
+      setShowActivityLog(false)
       setNotesSubTab(ratingsByTitle[titleId] ? 'deja_note' : 'a_noter')
       setActiveTab('notes')
       resetFilters()
@@ -301,6 +311,28 @@ export default function App() {
         // Pas grave si le navigateur bloque localStorage.
       }
     })
+  }
+
+  // Triple-tap sur l'avatar (n'importe quel compte) : ouvre le journal d'activité caché.
+  // Pas dans la sidebar pour rester discret — juste ce petit geste à connaître.
+  function handleAvatarTap() {
+    avatarTapCountRef.current += 1
+    clearTimeout(avatarTapTimerRef.current)
+
+    if (avatarTapCountRef.current >= 3) {
+      avatarTapCountRef.current = 0
+      guardedNavigate(() => {
+        setRatingPageTitleId(null)
+        setShowActivityLog(true)
+        setSidebarOpen(false)
+      })
+      return
+    }
+
+    // Si on ne tape pas 3 fois en moins d'une seconde, on remet le compteur à zéro.
+    avatarTapTimerRef.current = setTimeout(() => {
+      avatarTapCountRef.current = 0
+    }, 1000)
   }
 
   return (
@@ -392,11 +424,28 @@ export default function App() {
         )}
 
         <div className="sidebar-user">
-          {avatar && <img src={avatar} alt="" className="sidebar-user-avatar" />}
+          {avatar && (
+            <img
+              src={avatar}
+              alt=""
+              className="sidebar-user-avatar"
+              onClick={handleAvatarTap}
+              role="button"
+              tabIndex={0}
+            />
+          )}
           <div className="sidebar-user-info">
             <div className="sidebar-user-label">Connecté en tant que</div>
             <div className="sidebar-user-name">{pseudo}</div>
           </div>
+          <button
+            className="icon-btn"
+            onClick={() => setShowChangePassword(true)}
+            aria-label="Changer mon mot de passe"
+            title="Changer mon mot de passe"
+          >
+            ⚙
+          </button>
           <button className="icon-btn" onClick={() => supabase.auth.signOut()} aria-label="Déconnexion">
             ⏻
           </button>
@@ -404,7 +453,9 @@ export default function App() {
       </aside>
 
       {/* Contenu principal */}
-      {ratingPageTitleId && titles.find((t) => t.id === ratingPageTitleId) ? (
+      {showActivityLog ? (
+        <ActivityLogPage onBack={() => setShowActivityLog(false)} />
+      ) : ratingPageTitleId && titles.find((t) => t.id === ratingPageTitleId) ? (
         <RatingPage
           ref={ratingPageRef}
           title={titles.find((t) => t.id === ratingPageTitleId)}
@@ -532,6 +583,10 @@ export default function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {showChangePassword && (
+        <ChangePasswordModal userEmail={session.user.email} onClose={() => setShowChangePassword(false)} />
       )}
     </div>
   )

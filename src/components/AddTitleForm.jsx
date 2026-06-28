@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 import { searchTitles, fetchSeasonCount } from '../tmdb'
+import { logActivity } from '../activityLog'
 
 const TYPES = [
   { value: 'serie', label: 'Série' },
@@ -144,6 +145,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
       return
     }
 
+    logActivity(user.email, adminMode ? 'a ajouté directement' : 'a proposé', finalName)
     onAdded()
   }
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { supabase } from '../supabaseClient'
+import { logActivity } from '../activityLog'
 
 const TYPE_LABELS = {
   serie: 'Série',
@@ -57,6 +58,7 @@ const RatingPage = forwardRef(function RatingPage(
   const [savedSnapshot, setSavedSnapshot] = useState({ ...EMPTY_SCORES, comment: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [hadExistingRating, setHadExistingRating] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -83,6 +85,7 @@ const RatingPage = forwardRef(function RatingPage(
         })
         setComment(initial.comment)
         setSavedSnapshot(initial)
+        setHadExistingRating(Boolean(data))
         setLoading(false)
       })
   }, [title.id, currentUserEmail])
@@ -137,6 +140,16 @@ const RatingPage = forwardRef(function RatingPage(
     )
     setSaving(false)
     setSavedSnapshot({ ...scores, comment })
+
+    const average = Math.round(((scores.score_general * 2 + scores.score_scenario + scores.score_personnages) / 4) * 10) / 10
+    logActivity(
+      currentUserEmail,
+      hadExistingRating ? 'a modifié sa note pour' : 'a noté',
+      title.name,
+      `${average}/10`
+    )
+    setHadExistingRating(true)
+
     onSaved?.()
     return true
   }
