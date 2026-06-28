@@ -299,6 +299,7 @@ export default function App() {
                     onChanged={() => { fetchTitles(); fetchMyRatings(session.user.email) }}
                     onOpen={() => activeTab === 'notes' ? setRatingPageTitleId(title.id) : setOpenTitleId(title.id)}
                     readOnly={activeTab === 'notes'}
+                    alreadyRated={Boolean(ratingsByTitle[title.id])}
                   />
                 ))}
               </div>

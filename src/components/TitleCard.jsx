@@ -28,7 +28,7 @@ function formatShortDate(isoDate) {
   return `${day}/${month}/${year.slice(-2)}`
 }
 
-export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, readOnly = false }) {
+export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, readOnly = false, alreadyRated = false }) {
   const [busy, setBusy] = useState(false)
 
   const proposedBy = emailToPseudo(title.added_by_email)
@@ -117,7 +117,9 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
 
         {readOnly ? (
           <div className="title-card-actions">
-            <button className="btn btn-action" onClick={onOpen}>Noter</button>
+            <button className="btn btn-action" onClick={onOpen}>
+              {alreadyRated ? 'Voir / Modifier' : 'Noter'}
+            </button>
           </div>
         ) : (
           <div className="title-card-actions">
@@ -152,7 +154,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
                 disabled={busy}
                 onClick={() => confirmAndUpdate(
                   `Commencer « ${title.name} » ?`,
-                  { status: 'en_cours', current_season: hasSeasons(title) ? 1 : null }
+                  { status: 'en_cours', current_season: hasSeasons(title) ? (title.current_season || 1) : null }
                 )}
               >
                 On commence
