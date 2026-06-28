@@ -48,6 +48,8 @@ export default function App() {
   const [ratingPageTitleId, setRatingPageTitleId] = useState(null)
   const [hasUnsavedRating, setHasUnsavedRating] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState(null)
+  const [sortOption, setSortOption] = useState('default')
+  const [averageRatingByTitle, setAverageRatingByTitle] = useState({})
   const ratingPageRef = useRef(null)
 
   useEffect(() => {
@@ -76,18 +78,36 @@ export default function App() {
 
   const fetchMyRatings = useCallback(async (email) => {
     if (!email) return
-    const { data } = await supabase.from('ratings').select('title_id').eq('user_email', email)
+    const { data } = await supabase.from('ratings').select('title_id, score_general, score_scenario, score_personnages').eq('user_email', email)
     const map = {}
     for (const r of data || []) map[r.title_id] = true
     setRatingsByTitle(map)
+  }, [])
+
+  // Charge TOUS les avis (Thomas + Flo), pour calculer la moyenne combinée par titre,
+  // utilisée pour le tri "Votre note".
+  const fetchAllRatingsAverage = useCallback(async () => {
+    const { data } = await supabase.from('ratings').select('title_id, score_general, score_scenario, score_personnages')
+    const byTitle = {}
+    for (const r of data || []) {
+      const weighted = (r.score_general * 2 + r.score_scenario + r.score_personnages) / 4
+      if (!byTitle[r.title_id]) byTitle[r.title_id] = []
+      byTitle[r.title_id].push(weighted)
+    }
+    const avg = {}
+    for (const [titleId, scores] of Object.entries(byTitle)) {
+      avg[titleId] = scores.reduce((a, b) => a + b, 0) / scores.length
+    }
+    setAverageRatingByTitle(avg)
   }, [])
 
   useEffect(() => {
     if (session) {
       fetchTitles()
       fetchMyRatings(session.user.email)
+      fetchAllRatingsAverage()
     }
-  }, [session, fetchTitles, fetchMyRatings])
+  }, [session, fetchTitles, fetchMyRatings, fetchAllRatingsAverage])
 
   if (authLoading) {
     return <div className="page-loading">Chargement…</div>
@@ -108,8 +128,27 @@ export default function App() {
     return 2
   }
 
-  const visibleTitles = titles
-    .filter((t) => {
+  const TYPE_ORDER = { serie: 0, serie_animee: 1, film: 2, manga: 3 }
+
+  function applySortOption(list) {
+    switch (sortOption) {
+      case 'alpha':
+        return [...list].sort((a, b) => a.name.localeCompare(b.name))
+      case 'release_year':
+        return [...list].sort((a, b) => (b.release_year || 0) - (a.release_year || 0))
+      case 'type':
+        return [...list].sort((a, b) => (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9))
+      case 'tmdb_rating':
+        return [...list].sort((a, b) => (b.tmdb_vote_average || -1) - (a.tmdb_vote_average || -1))
+      case 'our_rating':
+        return [...list].sort((a, b) => (averageRatingByTitle[b.id] || -1) - (averageRatingByTitle[a.id] || -1))
+      default:
+        return list
+    }
+  }
+
+  const visibleTitles = applySortOption(
+    titles.filter((t) => {
       if (activeTab === 'notes') {
         if (!t.has_been_in_progress) return false
         const alreadyRated = Boolean(ratingsByTitle[t.id])
@@ -122,12 +161,15 @@ export default function App() {
       if (searchQuery.trim() && !t.name.toLowerCase().includes(searchQuery.trim().toLowerCase())) return false
       return true
     })
-    .sort((a, b) => {
-      if (activeTab === 'vu') {
-        return seasonPriority(a) - seasonPriority(b)
-      }
-      return 0
-    })
+  ).sort((a, b) => {
+    // La priorité "nouvelle saison" dans Terminé reste toujours appliquée en premier,
+    // par-dessus le tri choisi, pour ne jamais perdre cette info importante.
+    if (activeTab === 'vu') {
+      const diff = seasonPriority(a) - seasonPriority(b)
+      if (diff !== 0) return diff
+    }
+    return 0
+  })
 
   const currentTab = activeTab === 'notes'
     ? {
@@ -329,7 +371,7 @@ export default function App() {
           title={titles.find((t) => t.id === ratingPageTitleId)}
           currentUserEmail={session.user.email}
           onBack={() => guardedNavigate(() => setRatingPageTitleId(null))}
-          onSaved={() => fetchMyRatings(session.user.email)}
+          onSaved={() => { fetchMyRatings(session.user.email); fetchAllRatingsAverage() }}
           onDirtyChange={setHasUnsavedRating}
         />
       ) : (
@@ -357,6 +399,19 @@ export default function App() {
                 <option value="film">Films</option>
                 <option value="manga">Mangas</option>
               </select>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="status-select"
+                aria-label="Trier"
+              >
+                <option value="default">Tri par défaut</option>
+                <option value="alpha">Alphabétique (A-Z)</option>
+                <option value="release_year">Date de sortie</option>
+                <option value="type">Type</option>
+                <option value="tmdb_rating">Note TMDB</option>
+                <option value="our_rating">Notre note</option>
+              </select>
             </div>
           </header>
 
@@ -374,7 +429,7 @@ export default function App() {
                     key={title.id}
                     title={title}
                     currentUserEmail={session.user.email}
-                    onChanged={() => { fetchTitles(); fetchMyRatings(session.user.email) }}
+                    onChanged={() => { fetchTitles(); fetchMyRatings(session.user.email); fetchAllRatingsAverage() }}
                     onOpen={() => activeTab === 'notes' ? openRatingPage(title.id) : setOpenTitleId(title.id)}
                     readOnly={activeTab === 'notes'}
                     alreadyRated={Boolean(ratingsByTitle[title.id])}
@@ -403,7 +458,7 @@ export default function App() {
           title={titles.find((t) => t.id === openTitleId)}
           currentUserEmail={session.user.email}
           onClose={() => setOpenTitleId(null)}
-          onChanged={() => fetchMyRatings(session.user.email)}
+          onChanged={() => { fetchMyRatings(session.user.email); fetchAllRatingsAverage() }}
           onRate={() => {
             setOpenTitleId(null)
             openRatingPage(openTitleId)

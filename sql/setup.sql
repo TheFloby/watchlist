@@ -45,6 +45,12 @@ create table if not exists titles (
   -- n'ont pas à y figurer, même si leur statut actuel a changé depuis.
   has_been_in_progress boolean not null default false,
 
+  -- Note moyenne TMDB (sur 10) et année de sortie, récupérées à l'ajout du titre.
+  -- Servent uniquement au tri ("Note TMDB", "Date de sortie") — vides pour les
+  -- titres ajoutés à la main (mangas papier, etc.).
+  tmdb_vote_average numeric(3,1),
+  release_year int,
+
   -- Qui a ajouté/proposé ce titre
   added_by uuid references auth.users(id) on delete set null,
   added_by_email text,

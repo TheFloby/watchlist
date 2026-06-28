@@ -54,7 +54,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
   }
 
   async function handleDelete() {
-    const ok = await confirmAction(`Retirer « ${title.name} » de la liste ?`)
+    const ok = await confirmAction(`« ${title.name} » disparaît de la liste, c'est sûr ?`)
     if (!ok) return
     setBusy(true)
     await supabase.from('titles').delete().eq('id', title.id)
@@ -71,7 +71,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
     : null
 
   async function watchNewSeason() {
-    const ok = await confirmAction(`Une nouvelle saison de « ${title.name} » est sortie. La mettre dans À voir ?`)
+    const ok = await confirmAction(`Une nouvelle saison de « ${title.name} » est sortie ! On la met dans À voir ?`)
     if (!ok) return
     update({
       status: 'a_voir',
@@ -137,14 +137,14 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
                   <button
                     className="btn btn-validate"
                     disabled={busy}
-                    onClick={() => confirmAndUpdate(`Valider la proposition « ${title.name} » ?`, { status: 'a_voir' })}
+                    onClick={() => confirmAndUpdate(`Top, on valide « ${title.name} » ?`, { status: 'a_voir' })}
                   >
                     Valider
                   </button>
                   <button
                     className="btn btn-refuse"
                     disabled={busy}
-                    onClick={() => confirmAndUpdate(`Refuser la proposition « ${title.name} » ?`, { status: 'refusee' })}
+                    onClick={() => confirmAndUpdate(`Bon, on laisse tomber « ${title.name} » ?`, { status: 'refusee' })}
                   >
                     Refuser
                   </button>
@@ -158,7 +158,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
                 className="btn btn-action"
                 disabled={busy}
                 onClick={() => confirmAndUpdate(
-                  `Commencer « ${title.name} » ?`,
+                  `Prêt à lancer « ${title.name} » ?`,
                   { status: 'en_cours', current_season: hasSeasons(title) ? (title.current_season || 1) : null }
                 )}
               >
@@ -186,14 +186,14 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
                 <button
                   className="btn btn-action"
                   disabled={busy}
-                  onClick={() => confirmAndUpdate(`Marquer « ${title.name} » comme terminé ?`, { status: 'vu' })}
+                  onClick={() => confirmAndUpdate(`« ${title.name} » fini, bravo ! On valide ?`, { status: 'vu' })}
                 >
                   Terminé
                 </button>
                 <button
                   className="btn btn-abandon"
                   disabled={busy}
-                  onClick={() => confirmAndUpdate(`Abandonner « ${title.name} » ?`, { status: 'jamais_fini' })}
+                  onClick={() => confirmAndUpdate(`On laisse « ${title.name} » de côté pour l'instant ?`, { status: 'jamais_fini' })}
                 >
                   Abandonner
                 </button>
@@ -205,7 +205,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
               <button
                 className="btn btn-action"
                 disabled={busy}
-                onClick={() => confirmAndUpdate(`Reprendre « ${title.name} » ?`, { status: 'en_cours' })}
+                onClick={() => confirmAndUpdate(`On s'y remet, « ${title.name} » ?`, { status: 'en_cours' })}
               >
                 Reprendre
               </button>
@@ -223,7 +223,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged, onOpen, 
                 className="btn btn-action"
                 disabled={busy}
                 onClick={() => confirmAndUpdate(
-                  `Revoir « ${title.name} » depuis le début ?`,
+                  `Envie de redécouvrir « ${title.name} » depuis le début ?`,
                   { status: 'en_cours', current_season: hasSeasons(title) ? 1 : null }
                 )}
               >

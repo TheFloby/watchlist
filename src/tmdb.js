@@ -28,6 +28,7 @@ export async function searchTitles(query) {
         year: date ? date.slice(0, 4) : null,
         image_url: r.poster_path ? `${IMAGE_BASE}${r.poster_path}` : null,
         tmdbType: isMovie ? 'film' : 'serie',
+        voteAverage: r.vote_average ? Math.round(r.vote_average * 10) / 10 : null,
       }
     })
 }

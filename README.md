@@ -4,25 +4,22 @@ Site perso pour Thomas et Flo : propositions, validations croisées, suivi des s
 
 ## Nouveautés de cette mise à jour
 
-- **3 critères de notation** au lieu d'une seule note : Ressenti général (compte double), Scénario, Personnages. La moyenne affichée partout = `(ressenti×2 + scénario + personnages) / 4`.
-- **Page de notation dédiée** : noter ou modifier sa note se fait maintenant sur une vraie page séparée (accessible depuis le menu "Notes" ou depuis la fiche détaillée), plus dans une fenêtre superposée.
-- **Fiche détaillée en lecture seule pour la notation** : elle affiche ta note (si tu en as déjà mis une) avec un lien "Envie de modifier ? Clique ici", ou "Pas encore noté, clique ici" sinon — les deux renvoient vers la page de notation.
-- **Page "Notes" simplifiée** : plus aucune action de gestion (Revoir, Abandonner, supprimer...) sur les cartes de ce menu — juste un bouton "Noter", pour rester focus sur la notation.
-- **Détection élargie des nouvelles saisons** : en plus de la vérification automatique quotidienne, si une série "Terminé" a une saison de retard par rapport au total connu (ex: vue jusqu'à la saison 3 alors qu'il y en a 4), le badge "Nouvelle saison" + le bouton apparaissent aussi — utile pour tout l'historique rentré d'un coup, sans attendre le passage du cron.
+- **Système de tri** : un nouveau menu déroulant apparaît à côté de "Tous les types", avec 6 options — tri par défaut, alphabétique, date de sortie, type, note TMDB, et votre note moyenne (Thomas + Flo combinés). Les titres non notés ou sans info TMDB restent en bas du tri concerné.
+- **Toutes les popups de confirmation harmonisées** : remplacé les `confirm()` natifs du navigateur par le même style de popup partout (Valider, Refuser, Terminé, Abandonner, Reprendre, Supprimer, etc.), avec des messages plus personnalisés selon l'action.
 
-Une nouvelle migration SQL est nécessaire (passage d'une note unique à 3 critères dans `ratings`). Pas de nouveau réglage Vercel.
+Une nouvelle migration SQL est nécessaire (2 nouvelles colonnes sur `titles` pour le tri). Pas de nouveau réglage Vercel.
 
 ## 1. Mettre à jour la base de données (Supabase)
 
 1. Dans Supabase → **SQL Editor** → **New query**.
-2. Copie-colle le contenu de `sql/migration_5.sql`, clique **Run**.
+2. Copie-colle le contenu de `sql/migration_6.sql`, clique **Run**.
 
 ## 2. Mettre à jour le code (GitHub)
 
 ```powershell
 cd C:\Users\flori\OneDrive\Projets\watchlist
 git add .
-git commit -m "3 criteres de notation et page dediee"
+git commit -m "Systeme de tri et popups personnalisees"
 git push
 ```
 
@@ -63,6 +60,7 @@ Propositions ──valide──→ À voir ──"On commence"──→ En cours
 - **Notes** : menu dédié dans la sidebar, séparé des 6 onglets de statut. Contient tous les titres déjà passés par "En cours" au moins une fois. "À noter" (pas encore noté par toi) et "Déjà noté" (modifiable à tout moment) — c'est individuel à chaque compte. Les cartes y sont en lecture pure : pas de gestion de statut, juste un bouton "Noter".
 - **Fiche détaillée** : clique sur l'affiche ou le titre d'une carte, dans n'importe quel onglet, pour ouvrir la fiche avec les infos TMDB et les avis de chacun. Ta propre note s'y affiche en lecture seule, avec un lien pour aller la modifier sur la page dédiée.
 - **Notation à 3 critères** : Ressenti général, Scénario, Personnages, chacun sur 10 avec demi-étoiles, plus un commentaire global. Le ressenti général compte double dans la moyenne affichée partout ailleurs.
+- **Tri** : menu déroulant à côté du filtre de type — par défaut (ordre d'ajout), alphabétique, date de sortie, type, note TMDB, ou votre note moyenne. S'applique à tous les onglets. Dans Terminé, les séries avec une nouvelle saison restent toujours en haut, quel que soit le tri choisi.
 
 ## Pour faire des modifications plus tard
 
@@ -81,7 +79,8 @@ series-tracker/
 │   ├── migration_2.sql        → mise à jour n°2 (détection nouvelle saison)
 │   ├── migration_3.sql        → mise à jour n°3 (date de saison annoncée)
 │   ├── migration_4.sql        → mise à jour n°4 (notes et avis, version 1 note)
-│   └── migration_5.sql        → mise à jour n°5 (3 critères de notation)
+│   ├── migration_5.sql        → mise à jour n°5 (3 critères de notation)
+│   └── migration_6.sql        → mise à jour n°6 (colonnes de tri)
 ├── public/
 │   ├── logo.png               → logo TFCU complet (header, écran de connexion, favicon)
 │   ├── pwa-192.png, pwa-512.png → icônes d'installation app
