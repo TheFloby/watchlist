@@ -94,6 +94,10 @@ export default function App() {
         } catch {
           // Pas grave si le navigateur bloque localStorage.
         }
+        // On attend que le contenu principal ait remplacé l'écran de connexion à
+        // l'écran avant de forcer le scroll — sinon ça s'exécute trop tôt et n'a
+        // aucun effet visible. Un court délai laisse le temps au DOM de se mettre à jour.
+        setTimeout(() => window.scrollTo(0, 0), 50)
       }
       wasLoggedOutRef.current = !session
     })
@@ -249,11 +253,13 @@ export default function App() {
 
   // Réinitialise le filtre de type et le tri à chaque vrai changement de vue
   // (changement d'onglet, de sous-onglet Notes...) — un filtre actif depuis un
-  // autre onglet n'a pas de raison de persister silencieusement ailleurs.
+  // autre onglet n'a pas de raison de persister silencieusement ailleurs. On force
+  // aussi le retour en haut de page, pour ne pas garder le scroll de la page d'avant.
   function resetFilters() {
     setTypeFilter('all')
     setSortOption('default')
     setSortDirection('desc')
+    window.scrollTo(0, 0)
   }
 
   function selectTab(key) {
@@ -354,6 +360,7 @@ export default function App() {
         setRatingPageTitleId(null)
         setShowActivityLog(true)
         setSidebarOpen(false)
+        window.scrollTo(0, 0)
       })
       return
     }
@@ -483,13 +490,13 @@ export default function App() {
 
       {/* Contenu principal */}
       {showActivityLog ? (
-        <ActivityLogPage onBack={() => setShowActivityLog(false)} />
+        <ActivityLogPage onBack={() => { setShowActivityLog(false); window.scrollTo(0, 0) }} />
       ) : ratingPageTitleId && titles.find((t) => t.id === ratingPageTitleId) ? (
         <RatingPage
           ref={ratingPageRef}
           title={titles.find((t) => t.id === ratingPageTitleId)}
           currentUserEmail={session.user.email}
-          onBack={() => guardedNavigate(() => setRatingPageTitleId(null))}
+          onBack={() => guardedNavigate(() => { setRatingPageTitleId(null); window.scrollTo(0, 0) })}
           onSaved={() => { fetchMyRatings(session.user.email); fetchAllRatingsAverage() }}
           onDirtyChange={setHasUnsavedRating}
         />
