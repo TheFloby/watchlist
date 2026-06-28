@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import Auth from './components/Auth'
 import AddTitleForm from './components/AddTitleForm'
 import TitleCard from './components/TitleCard'
+import TitleModal from './components/TitleModal'
 import { emailToPseudo, avatarForEmail } from './accounts'
 import './App.css'
 
@@ -15,7 +16,7 @@ const TABS = [
   { key: 'refusee', label: 'Refusées', icon: '✕', empty: 'Aucune proposition refusée.' },
 ]
 
-const VALID_TABS = TABS.map((t) => t.key)
+const VALID_TABS = [...TABS.map((t) => t.key), 'notes']
 
 // Récupère le dernier onglet visité (sauvegardé dans le navigateur), pour ne pas
 // retomber sur "En cours" à chaque rechargement de la page.
@@ -39,6 +40,9 @@ export default function App() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [notesSubTab, setNotesSubTab] = useState('a_noter')
+  const [ratingsByTitle, setRatingsByTitle] = useState({})
+  const [openTitleId, setOpenTitleId] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -64,9 +68,20 @@ export default function App() {
     setLoadingTitles(false)
   }, [])
 
+  const fetchMyRatings = useCallback(async (email) => {
+    if (!email) return
+    const { data } = await supabase.from('ratings').select('title_id').eq('user_email', email)
+    const map = {}
+    for (const r of data || []) map[r.title_id] = true
+    setRatingsByTitle(map)
+  }, [])
+
   useEffect(() => {
-    if (session) fetchTitles()
-  }, [session, fetchTitles])
+    if (session) {
+      fetchTitles()
+      fetchMyRatings(session.user.email)
+    }
+  }, [session, fetchTitles, fetchMyRatings])
 
   if (authLoading) {
     return <div className="page-loading">Chargement…</div>
@@ -88,12 +103,19 @@ export default function App() {
   }
 
   const visibleTitles = titles
-    .filter(
-      (t) =>
-        t.status === activeTab &&
-        (typeFilter === 'all' || t.type === typeFilter) &&
-        (searchQuery.trim() === '' || t.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
-    )
+    .filter((t) => {
+      if (activeTab === 'notes') {
+        if (!t.has_been_in_progress) return false
+        const alreadyRated = Boolean(ratingsByTitle[t.id])
+        if (notesSubTab === 'a_noter' && alreadyRated) return false
+        if (notesSubTab === 'deja_note' && !alreadyRated) return false
+      } else if (t.status !== activeTab) {
+        return false
+      }
+      if (typeFilter !== 'all' && t.type !== typeFilter) return false
+      if (searchQuery.trim() && !t.name.toLowerCase().includes(searchQuery.trim().toLowerCase())) return false
+      return true
+    })
     .sort((a, b) => {
       if (activeTab === 'vu') {
         return seasonPriority(a) - seasonPriority(b)
@@ -101,7 +123,14 @@ export default function App() {
       return 0
     })
 
-  const currentTab = TABS.find((t) => t.key === activeTab)
+  const currentTab = activeTab === 'notes'
+    ? {
+        label: 'Notes',
+        empty: notesSubTab === 'a_noter'
+          ? 'Rien à noter pour le moment.'
+          : "Tu n'as encore rien noté.",
+      }
+    : TABS.find((t) => t.key === activeTab)
 
   function selectTab(key) {
     setActiveTab(key)
@@ -153,6 +182,40 @@ export default function App() {
               </button>
             )
           })}
+
+          <div className="sidebar-divider" />
+
+          {(() => {
+            const ratable = titles.filter((t) => t.has_been_in_progress)
+            const toRateCount = ratable.filter((t) => !ratingsByTitle[t.id]).length
+            return (
+              <button
+                className={`sidebar-link ${activeTab === 'notes' ? 'sidebar-link--active' : ''}`}
+                onClick={() => selectTab('notes')}
+              >
+                <span className="sidebar-link-icon">★</span>
+                Notes
+                <span className="sidebar-count">{toRateCount}</span>
+              </button>
+            )
+          })()}
+
+          {activeTab === 'notes' && (
+            <div className="sidebar-subnav">
+              <button
+                className={`sidebar-sublink ${notesSubTab === 'a_noter' ? 'sidebar-sublink--active' : ''}`}
+                onClick={() => setNotesSubTab('a_noter')}
+              >
+                À noter
+              </button>
+              <button
+                className={`sidebar-sublink ${notesSubTab === 'deja_note' ? 'sidebar-sublink--active' : ''}`}
+                onClick={() => setNotesSubTab('deja_note')}
+              >
+                Déjà noté
+              </button>
+            </div>
+          )}
         </nav>
 
         <button className="sidebar-add" onClick={() => { setAddFormAdminMode(false); setShowAddForm(true); setSidebarOpen(false) }}>
@@ -222,7 +285,8 @@ export default function App() {
                   key={title.id}
                   title={title}
                   currentUserEmail={session.user.email}
-                  onChanged={fetchTitles}
+                  onChanged={() => { fetchTitles(); fetchMyRatings(session.user.email) }}
+                  onOpen={() => setOpenTitleId(title.id)}
                 />
               ))}
             </div>
@@ -239,6 +303,15 @@ export default function App() {
             fetchTitles()
           }}
           onClose={() => setShowAddForm(false)}
+        />
+      )}
+
+      {openTitleId && titles.find((t) => t.id === openTitleId) && (
+        <TitleModal
+          title={titles.find((t) => t.id === openTitleId)}
+          currentUserEmail={session.user.email}
+          onClose={() => setOpenTitleId(null)}
+          onChanged={() => fetchMyRatings(session.user.email)}
         />
       )}
     </div>

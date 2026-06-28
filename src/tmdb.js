@@ -50,3 +50,42 @@ export async function fetchSeasonCount(tmdbId) {
     return null
   }
 }
+
+// Récupère les infos détaillées d'un titre pour la fiche (synopsis, note, genres,
+// casting, bande-annonce...). `isMovie` indique s'il faut interroger /movie ou /tv.
+// Retourne null si pas de tmdb_id, ou si la requête échoue.
+export async function fetchTitleDetails(tmdbId, isMovie) {
+  if (!tmdbId) return null
+
+  try {
+    const endpoint = isMovie ? 'movie' : 'tv'
+    const url = `${BASE_URL}/${endpoint}/${tmdbId}?api_key=${TMDB_API_KEY}&language=fr-FR&append_to_response=credits,videos`
+    const res = await fetch(url)
+    if (!res.ok) return null
+
+    const data = await res.json()
+
+    const trailer = (data.videos?.results || []).find(
+      (v) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')
+    )
+
+    const cast = (data.credits?.cast || []).slice(0, 6).map((c) => ({
+      name: c.name,
+      character: c.character,
+      photo: c.profile_path ? `${IMAGE_BASE}${c.profile_path}` : null,
+    }))
+
+    return {
+      overview: data.overview || null,
+      voteAverage: data.vote_average ? Math.round(data.vote_average * 10) / 10 : null,
+      genres: (data.genres || []).map((g) => g.name),
+      year: (isMovie ? data.release_date : data.first_air_date)?.slice(0, 4) || null,
+      runtime: isMovie ? data.runtime : (data.episode_run_time?.[0] || null),
+      originalTitle: data.original_title || data.original_name || null,
+      cast,
+      trailerUrl: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null,
+    }
+  } catch {
+    return null
+  }
+}

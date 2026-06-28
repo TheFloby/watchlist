@@ -4,26 +4,26 @@ Site perso pour Thomas et Flo : propositions, validations croisées, suivi des s
 
 ## Nouveautés de cette mise à jour
 
-- **Distinction saison sortie / saison annoncée** : si TMDB connaît la date de sortie d'une prochaine saison mais qu'elle n'est pas encore diffusée, un badge informatif "Saison X le JJ/MM" apparaît (sans bouton d'action). Dès que la date est passée, ça redevient le badge "Nouvelle saison" classique avec son bouton.
-- Plusieurs petits correctifs : recherche par nom sur tous les onglets, tri automatique des nouvelles saisons en haut de "Terminé", fix du zoom automatique sur iPhone dans les champs de texte, et prise en charge des mangas dont l'adaptation animée a des saisons (ex: Ao Ashi).
+- **Menu "Notes"** : un nouvel onglet dans la sidebar, avec deux sous-onglets **À noter** et **Déjà noté**. Y figurent tous les titres déjà passés par "En cours" au moins une fois (donc pas les Propositions ni les À voir jamais commencés). Chacun note de son côté, sur 10 avec demi-étoiles, plus un commentaire — c'est individuel par compte.
+- **Fiche détaillée** : cliquer sur l'affiche ou le titre d'une carte (n'importe quel onglet) ouvre une fenêtre avec synopsis, note TMDB, genres, année/durée, casting, lien vers la bande-annonce (quand disponible), et les avis de Thomas et Flo présentés en bulles avec leur avatar.
 
-Une nouvelle migration SQL est nécessaire pour cette mise à jour (ajout de 2 colonnes). Pas de nouveau réglage Vercel cette fois — tout ce qui était déjà configuré (variables d'environnement, cron) reste valable.
+Une nouvelle migration SQL est nécessaire (nouvelle table `ratings` + une colonne sur `titles`). Pas de nouveau réglage Vercel.
 
 ## 1. Mettre à jour la base de données (Supabase)
 
 1. Dans Supabase → **SQL Editor** → **New query**.
-2. Copie-colle le contenu de `sql/migration_3.sql`, clique **Run**.
+2. Copie-colle le contenu de `sql/migration_4.sql`, clique **Run**.
 
 ## 2. Mettre à jour le code (GitHub)
 
 ```powershell
 cd C:\Users\flori\OneDrive\Projets\watchlist
 git add .
-git commit -m "Date de sortie des prochaines saisons annoncees"
+git commit -m "Systeme de notation et fiche detaillee"
 git push
 ```
 
-Vercel redéploiera automatiquement, en reprenant les variables d'environnement déjà configurées (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TMDB_API_KEY`, `CRON_SECRET`) — rien à reconfigurer.
+Vercel redéploiera automatiquement, en reprenant les variables d'environnement déjà configurées — rien à reconfigurer.
 
 ## Comment ça fonctionne
 
@@ -57,6 +57,8 @@ Propositions ──valide──→ À voir ──"On commence"──→ En cours
 - **Mangas** : pas de saisons par défaut, sauf si le manga a été trouvé via la recherche TMDB (son adaptation animée) — dans ce cas il a aussi un menu de saisons et profite de la détection automatique, comme une vraie série.
 - **Confirmation** : chaque bouton d'action affiche une popup "Es-tu sûr ?" avant d'appliquer le changement.
 - **Recherche** : un champ de recherche par nom est disponible sur tous les onglets, filtre en temps réel.
+- **Notes** : menu dédié dans la sidebar, séparé des 6 onglets de statut. Contient tous les titres déjà passés par "En cours" au moins une fois. "À noter" (pas encore noté par toi) et "Déjà noté" (modifiable à tout moment) — c'est individuel à chaque compte.
+- **Fiche détaillée** : clique sur l'affiche ou le titre d'une carte, dans n'importe quel onglet, pour ouvrir la fiche avec les infos TMDB et les avis de chacun.
 
 ## Pour faire des modifications plus tard
 
@@ -73,7 +75,8 @@ series-tracker/
 │   ├── setup.sql              → création complète (base vide)
 │   ├── migration.sql          → mise à jour n°1 (workflow, saisons)
 │   ├── migration_2.sql        → mise à jour n°2 (détection nouvelle saison)
-│   └── migration_3.sql        → mise à jour n°3 (date de saison annoncée)
+│   ├── migration_3.sql        → mise à jour n°3 (date de saison annoncée)
+│   └── migration_4.sql        → mise à jour n°4 (notes et avis)
 ├── public/
 │   ├── logo.png               → logo TFCU complet (header, écran de connexion, favicon)
 │   ├── pwa-192.png, pwa-512.png → icônes d'installation app
@@ -85,15 +88,16 @@ series-tracker/
 │   ├── accounts.js            → les 2 comptes (pseudo + avatar + conversion email)
 │   ├── supabaseClient.js      → connexion à la base de données (clé publique)
 │   ├── config.js              → ta clé API TMDB (côté site)
-│   ├── tmdb.js                → recherche + récupération du nombre de saisons
-│   ├── App.jsx                → page principale (sidebar + 6 onglets)
+│   ├── tmdb.js                → recherche + détails enrichis (synopsis, casting...)
+│   ├── App.jsx                → page principale (sidebar + onglets + menu Notes)
 │   ├── App.css                → tous les styles visuels
 │   ├── index.css              → styles globaux, palette de couleurs
 │   ├── main.jsx                → point d'entrée
 │   └── components/
 │       ├── Auth.jsx           → écran de connexion (sélection avatar + mot de passe)
 │       ├── AddTitleForm.jsx   → formulaire de proposition (avec recherche TMDB)
-│       └── TitleCard.jsx      → carte d'un titre, avec ses actions selon le statut
+│       ├── TitleCard.jsx      → carte d'un titre, avec ses actions selon le statut
+│       └── TitleModal.jsx     → fiche détaillée (infos TMDB + notes/avis)
 ├── index.html
 ├── package.json
 └── vite.config.js

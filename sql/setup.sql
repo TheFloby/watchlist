@@ -39,11 +39,37 @@ create table if not exists titles (
   upcoming_season_date date,
   upcoming_season_number int,
 
+  -- Vrai dès que le titre est passé au moins une fois par le statut "en_cours".
+  -- Sert à savoir s'il doit apparaître dans le menu Notes (À noter / Déjà noté) :
+  -- les titres jamais commencés (Proposition, Refusée, À voir sans avoir commencé)
+  -- n'ont pas à y figurer, même si leur statut actuel a changé depuis.
+  has_been_in_progress boolean not null default false,
+
   -- Qui a ajouté/proposé ce titre
   added_by uuid references auth.users(id) on delete set null,
   added_by_email text,
 
   created_at timestamp with time zone default now()
+);
+
+-- ============================================
+-- Table des notes/avis individuels (un par compte et par titre)
+-- ============================================
+create table if not exists ratings (
+  id uuid primary key default gen_random_uuid(),
+  title_id uuid not null references titles(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
+  user_email text not null,
+
+  -- Note de 0.5 à 10, par pas de 0.5 (demi-étoiles sur une échelle de 10)
+  score numeric(3,1) not null check (score >= 0.5 and score <= 10),
+  comment text,
+
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now(),
+
+  -- Un seul avis par personne et par titre (la même ligne se met à jour si on renote)
+  unique (title_id, user_email)
 );
 
 -- Active la Row Level Security (obligatoire pour la sécurité avec Supabase Auth)
@@ -70,5 +96,30 @@ using (true);
 -- Politique : tous les utilisateurs connectés peuvent supprimer
 create policy "Les utilisateurs connectés peuvent supprimer"
 on titles for delete
+to authenticated
+using (true);
+
+-- Active la Row Level Security sur la table des notes
+alter table ratings enable row level security;
+
+-- Tout le monde connecté peut voir toutes les notes (pour afficher l'avis de l'autre)
+create policy "Les utilisateurs connectés peuvent voir toutes les notes"
+on ratings for select
+to authenticated
+using (true);
+
+-- Chacun peut ajouter/modifier/supprimer uniquement sa propre note
+create policy "Chacun peut ajouter sa propre note"
+on ratings for insert
+to authenticated
+with check (true);
+
+create policy "Chacun peut modifier sa propre note"
+on ratings for update
+to authenticated
+using (true);
+
+create policy "Chacun peut supprimer sa propre note"
+on ratings for delete
 to authenticated
 using (true);

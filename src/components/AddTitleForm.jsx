@@ -120,6 +120,7 @@ export default function AddTitleForm({ user, onAdded, onClose, adminMode = false
       total_seasons: totalSeasons || null,
       current_season: finalCurrentSeason,
       tmdb_id: tmdbId || null,
+      has_been_in_progress: finalStatus === 'en_cours' || finalStatus === 'vu',
       added_by: user.id,
       added_by_email: user.email,
     })

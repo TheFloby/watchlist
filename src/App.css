@@ -367,6 +367,39 @@
   color: var(--accent-text);
 }
 
+.sidebar-divider {
+  height: 1px;
+  background: var(--rule);
+  margin: 10px 4px;
+}
+
+.sidebar-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 4px 28px;
+}
+
+.sidebar-sublink {
+  background: none;
+  border: none;
+  color: var(--cream-dim);
+  font-size: 13px;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.sidebar-sublink:hover {
+  background: var(--bg-card);
+  color: var(--cream);
+}
+
+.sidebar-sublink--active {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
 .sidebar-add {
   margin-top: 18px;
   background: var(--accent);
@@ -541,6 +574,7 @@
   aspect-ratio: 2 / 3;
   background: var(--bg-elevated);
   overflow: hidden;
+  cursor: pointer;
 }
 
 .title-card-poster img {
@@ -620,6 +654,14 @@
   margin: 0;
   line-height: 1.3;
   color: var(--cream);
+}
+
+.title-card-title-clickable {
+  cursor: pointer;
+}
+
+.title-card-title-clickable:hover {
+  color: var(--accent-text);
 }
 
 .title-card-meta {
@@ -869,6 +911,308 @@
 }
 
 /* ============================================
+   TITLE MODAL (fiche détaillée)
+   ============================================ */
+
+.title-modal {
+  background: var(--bg-elevated);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  padding: 28px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 88vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.title-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+}
+
+.title-modal-header {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.title-modal-poster {
+  width: 110px;
+  flex-shrink: 0;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.title-modal-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.title-modal-headline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.title-modal-type {
+  position: static;
+  display: inline-flex;
+  width: fit-content;
+}
+
+.title-modal-headline h2 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--cream);
+  line-height: 1.2;
+}
+
+.title-modal-original {
+  font-size: 12.5px;
+  color: var(--cream-faint);
+  margin: 0;
+  font-style: italic;
+}
+
+.title-modal-meta-row {
+  display: flex;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--cream-dim);
+}
+
+.title-modal-genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.title-modal-genre-tag {
+  font-size: 11px;
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  color: var(--cream-dim);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+.title-modal-loading {
+  font-size: 13px;
+  color: var(--cream-dim);
+}
+
+.title-modal-overview {
+  font-size: 14px;
+  color: var(--cream-dim);
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+.title-modal-section {
+  margin-bottom: 22px;
+}
+
+.title-modal-section h3 {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cream);
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  opacity: 0.7;
+}
+
+.title-modal-cast {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 12px;
+}
+
+.title-modal-cast-member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+
+.title-modal-cast-member img,
+.title-modal-cast-noimg {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-card);
+}
+
+.title-modal-cast-noimg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--cream-faint);
+}
+
+.title-modal-cast-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--cream);
+  line-height: 1.2;
+}
+
+.title-modal-cast-character {
+  font-size: 10.5px;
+  color: var(--cream-faint);
+  line-height: 1.2;
+}
+
+.title-modal-trailer-link {
+  display: inline-flex;
+  margin-bottom: 22px;
+  text-decoration: none;
+}
+
+/* Étoiles de notation */
+
+.star-rating {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.star-rating-star {
+  position: relative;
+  display: inline-block;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.star-rating--readonly .star-rating-star {
+  cursor: default;
+}
+
+.star-rating-star-empty {
+  color: var(--rule-strong);
+}
+
+.star-rating-star-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.title-modal-score-value {
+  font-size: 13px;
+  color: var(--cream-dim);
+  margin: 6px 0 0;
+}
+
+.title-modal-comment-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.title-modal-comment-edit textarea {
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--cream);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.title-modal-comment-edit textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.title-modal-comment-edit .btn {
+  align-self: flex-start;
+}
+
+/* Bulles d'avis */
+
+.title-modal-reviews {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.title-modal-no-review {
+  font-size: 13px;
+  color: var(--cream-faint);
+  margin: 0;
+}
+
+.review-bubble-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.review-bubble-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--rule-strong);
+  flex-shrink: 0;
+}
+
+.review-bubble {
+  background: var(--bg-card);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 10px 14px;
+  max-width: 85%;
+}
+
+.review-bubble-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.review-bubble-header strong {
+  font-size: 13px;
+  color: var(--cream);
+}
+
+.review-bubble-score {
+  font-size: 12px;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.review-bubble-text {
+  font-size: 13.5px;
+  color: var(--cream-dim);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ============================================
    RESPONSIVE — MOBILE
    ============================================ */
 
@@ -951,6 +1295,37 @@
 
   .auth-avatar-btn {
     padding: 12px 10px;
+  }
+
+  .title-modal {
+    padding: 22px 18px;
+    max-height: 92vh;
+  }
+
+  .title-modal-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .title-modal-poster {
+    width: 140px;
+  }
+
+  .title-modal-headline {
+    align-items: center;
+  }
+
+  .title-modal-meta-row {
+    justify-content: center;
+  }
+
+  .title-modal-genres {
+    justify-content: center;
+  }
+
+  .review-bubble {
+    max-width: 100%;
   }
 }
 

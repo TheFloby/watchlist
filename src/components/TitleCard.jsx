@@ -27,7 +27,7 @@ function formatShortDate(isoDate) {
   return `${day}/${month}/${year.slice(-2)}`
 }
 
-export default function TitleCard({ title, currentUserEmail, onChanged }) {
+export default function TitleCard({ title, currentUserEmail, onChanged, onOpen }) {
   const [busy, setBusy] = useState(false)
 
   const proposedBy = emailToPseudo(title.added_by_email)
@@ -35,7 +35,10 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
 
   async function update(fields) {
     setBusy(true)
-    await supabase.from('titles').update(fields).eq('id', title.id)
+    // Dès qu'un titre passe (ou repasse) en "En cours", on le marque comme ayant déjà
+    // été en cours — ça lui ouvre l'accès au menu Notes, même s'il change de statut après.
+    const finalFields = fields.status === 'en_cours' ? { ...fields, has_been_in_progress: true } : fields
+    await supabase.from('titles').update(finalFields).eq('id', title.id)
     setBusy(false)
     onChanged()
   }
@@ -73,7 +76,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
 
   return (
     <article className="title-card">
-      <div className="title-card-poster">
+      <div className="title-card-poster" onClick={onOpen} role="button" tabIndex={0}>
         {title.image_url ? (
           <img src={title.image_url} alt="" loading="lazy" />
         ) : (
@@ -85,7 +88,7 @@ export default function TitleCard({ title, currentUserEmail, onChanged }) {
       </div>
 
       <div className="title-card-body">
-        <h3>{title.name}</h3>
+        <h3 className="title-card-title-clickable" onClick={onOpen}>{title.name}</h3>
 
         {title.status === 'proposition' && proposedBy && (
           <p className="title-card-meta">Proposé par {proposedBy}</p>
