@@ -58,15 +58,44 @@ export default function App() {
   const avatarTapCountRef = useRef(0)
   const avatarTapTimerRef = useRef(null)
   const ratingPageRef = useRef(null)
+  const wasLoggedOutRef = useRef(true)
+
+  // Empêche le navigateur de restaurer automatiquement une ancienne position de
+  // scroll au chargement (comportement fréquent sur mobile, notamment en PWA),
+  // qui pouvait laisser le titre de page coupé en haut au premier affichage.
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual'
+    }
+    window.scrollTo(0, 0)
+  }, [])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setAuthLoading(false)
+      // Si une session existe déjà au chargement (page rechargée en étant connecté),
+      // on ne considère pas ça comme "était déconnecté" — donc le futur SIGNED_IN
+      // éventuel (ex: token rafraîchi) ne déclenchera pas de reset inutile.
+      wasLoggedOutRef.current = !session
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    // SIGNED_IN ne doit déclencher le reset sur "En cours" que si on vient vraiment
+    // de se reconnecter après avoir été déconnecté (saisie du mot de passe) — pas à
+    // chaque petit événement interne (changement d'onglet, rafraîchissement de token...)
+    // qui pourrait aussi porter ce nom selon le navigateur/la version du client.
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
+      if (event === 'SIGNED_IN' && wasLoggedOutRef.current) {
+        setActiveTab('en_cours')
+        setSidebarOpen(false)
+        try {
+          localStorage.setItem('watchlist_active_tab', 'en_cours')
+        } catch {
+          // Pas grave si le navigateur bloque localStorage.
+        }
+      }
+      wasLoggedOutRef.current = !session
     })
 
     return () => listener.subscription.unsubscribe()
