@@ -38,7 +38,6 @@ html, body {
 
 body {
   min-height: 100vh;
-  min-height: 100dvh;
   box-sizing: border-box;
   /* Empêche le contenu de passer sous la barre de statut / encoche sur iOS
      (nécessaire car index.html utilise viewport-fit=cover pour la PWA) */
@@ -48,9 +47,15 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
+/* Appliqué uniquement sur l'écran de connexion (voir Auth.jsx) : empêche tout
+   débordement de quelques pixels (notamment sur iOS en mode PWA installée) de
+   rendre la page scrollable, alors qu'il n'y a jamais besoin de scroller ici. */
+body.no-scroll {
+  overflow: hidden;
+}
+
 #root {
   min-height: 100vh;
-  min-height: 100dvh;
 }
 
 a {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { ACCOUNTS, pseudoToEmail } from '../accounts'
 
@@ -7,6 +7,15 @@ export default function Auth() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Cet écran n'a jamais besoin de scroll (tout rentre toujours dans la hauteur visible) ;
+  // sur iOS en mode PWA installée, un léger débordement de quelques pixels peut sinon
+  // rendre toute la page scrollable inutilement. On bloque ça explicitement tant qu'on
+  // est sur cet écran, et on remet le scroll normal en quittant (avant la connexion).
+  useEffect(() => {
+    document.body.classList.add('no-scroll')
+    return () => document.body.classList.remove('no-scroll')
+  }, [])
 
   function selectAccount(pseudo) {
     setSelected(pseudo)
